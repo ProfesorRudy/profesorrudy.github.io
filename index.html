@@ -141,6 +141,7 @@ a.btn-descargar:hover { background: #d4891a; }
     <div class="menu-tabs">
       <div class="tab active" id="tab-materiales" onclick="mostrarSeccion('materiales')">📚 Materias y<br>Materiales</div>
       <div class="tab" id="tab-tareas" onclick="mostrarSeccion('tareas')">✅ Tareas a<br>Realizar</div>
+      <div class="tab" id="tab-trabajogrupo" onclick="mostrarSeccion('trabajogrupo')">👥 Trabajo<br>en Grupo</div>
       <div class="tab" id="tab-notas" onclick="mostrarSeccion('notas')">📊 Mis<br>Calificaciones</div>
       <div class="tab" id="tab-asistencia" onclick="mostrarSeccion('asistencia')">🗓️ Mi<br>Asistencia</div>
       <div class="tab" id="tab-observaciones" onclick="mostrarSeccion('observaciones')">📝<br>Observaciones</div>
@@ -150,6 +151,7 @@ a.btn-descargar:hover { background: #d4891a; }
 
     <div id="seccion-materiales"></div>
     <div id="seccion-tareas" style="display:none;"></div>
+    <div id="seccion-trabajogrupo" style="display:none;"></div>
     <div id="seccion-notas" style="display:none;"></div>
     <div id="seccion-asistencia" style="display:none;"></div>
     <div id="seccion-observaciones" style="display:none;"></div>
@@ -611,6 +613,17 @@ const tareas = {
 };
 
 /* =====================================================================
+   3e-ter) TRABAJO EN GRUPO POR CURSO  (agrega o edita aquí)
+   Lecturas y material de apoyo para actividades grupales.
+   Formato: "Nombre curso": [ { titulo:"...", desc:"...", tipo:"pdf"|"doc"|..., url:"..." }, ... ]
+   ===================================================================== */
+const trabajoGrupo = {
+  "Contexto del Antiguo Testamento": [
+    { titulo: "Una tierra que mana leche y miel: Asentamiento en Canaán", desc: "John Drane, Introducción al Antiguo Testamento · Lectura para trabajo en grupo sobre la llegada de Israel a Canaán y las teorías arqueológicas de su asentamiento", tipo: "pdf", url: "materiales/contexto-at/trabajo-grupo-israel-en-canaan.pdf" }
+  ]
+};
+
+/* =====================================================================
    3e) HORARIO Y MODALIDAD POR CURSO  (agrega o edita aquí)
    modalidad: "Presencial", "Online" o "Híbrido"
    ===================================================================== */
@@ -711,6 +724,7 @@ function ingresar() {
   document.getElementById('alumno-rut-display').textContent = 'RUT: ' + key;
   renderMateriales();
   renderTareas();
+  renderTrabajoGrupo();
   renderNotas();
   renderAsistencia();
   renderObservaciones();
@@ -729,7 +743,7 @@ function salir() {
   document.getElementById('rut-input').focus();
 }
 
-const SECCIONES = ['materiales', 'tareas', 'notas', 'asistencia', 'observaciones', 'avisos', 'horario'];
+const SECCIONES = ['materiales', 'tareas', 'trabajogrupo', 'notas', 'asistencia', 'observaciones', 'avisos', 'horario'];
 function mostrarSeccion(sec) {
   for (const s of SECCIONES) {
     document.getElementById('seccion-' + s).style.display = (s === sec) ? 'block' : 'none';
@@ -805,6 +819,32 @@ function renderTareas() {
           '<div class="aviso-titulo">' + t.titulo + '</div>' +
           '<div class="aviso-texto">' + (t.desc || '') + '</div>' +
           (adjunto ? '<div style="margin-top:8px;">' + adjunto + '</div>' : '') +
+          '</div>';
+      }
+    }
+    html += '</div>';
+  }
+  cont.innerHTML = html;
+}
+
+function renderTrabajoGrupo() {
+  const cont = document.getElementById('seccion-trabajogrupo');
+  if (sinCursos()) { cont.innerHTML = SIN_CURSOS; return; }
+  const cursos = cursosActivos();
+  if (cursos.length === 0) { cont.innerHTML = SIN_CURSOS_ACTIVOS; return; }
+  let html = '';
+  for (const curso of cursos) {
+    const items = trabajoGrupo[curso] || [];
+    html += '<div class="curso-card"><div class="curso-titulo">📖 ' + curso + '</div>';
+    if (items.length === 0) {
+      html += '<p class="sin-materiales">Aún no hay lecturas de trabajo en grupo para este curso.</p>';
+    } else {
+      for (const m of items) {
+        html += '<div class="material-item">' +
+          '<div class="material-icon">' + (iconos[m.tipo] || '📄') + '</div>' +
+          '<div class="material-info"><div class="material-nombre">' + m.titulo + '</div>' +
+          '<div class="material-desc">' + (m.desc || '') + '</div></div>' +
+          '<a class="btn-descargar" href="' + m.url + '" target="_blank" rel="noopener" download>⬇ Descargar</a>' +
           '</div>';
       }
     }
