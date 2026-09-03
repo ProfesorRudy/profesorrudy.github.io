@@ -45,6 +45,7 @@
   --shadow-sm: 0 3px 10px -2px rgba(26,20,8,.08);
   --shadow-md: 0 10px 28px -8px rgba(26,20,8,.16);
   --shadow-lg: 0 24px 55px -16px rgba(20,16,10,.28);
+  --shadow-xl: 0 40px 90px -24px rgba(20,14,6,.38), 0 10px 26px -10px rgba(20,14,6,.18);
   --ease: cubic-bezier(.4,0,.2,1);
 }
 
@@ -70,30 +71,72 @@ body.logged-in .header img { width: 84px; height: 84px; }
 body.logged-in .header h1 { font-size: 1.18rem; }
 
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.85rem;
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-xl);
+  padding: 2.1rem 1.9rem 1.9rem;
+  box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255,255,255,.7);
+  overflow: hidden;
 }
-label { display: block; font-size: 0.85rem; color: var(--ink-700); margin-bottom: 7px; font-weight: 600; }
-.input-row { display: flex; gap: 8px; }
+.card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--amber-400), var(--amber-600), var(--amber-400));
+  background-size: 200% 100%;
+}
+.login-eyebrow {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--amber-600); margin-bottom: 0.55rem;
+}
+label { display: block; font-size: 0.85rem; color: var(--ink-700); margin-bottom: 8px; font-weight: 600; }
+.input-row { display: flex; gap: 9px; }
+.input-wrap { position: relative; flex: 1; min-width: 0; }
+.input-wrap .input-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-400); display: flex; pointer-events: none; transition: color .18s var(--ease);
+}
+.input-wrap .input-icon svg { width: 18px; height: 18px; }
+.input-wrap:focus-within .input-icon { color: var(--amber-500); }
 input[type=text] {
-  flex: 1; padding: 11px 15px; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
-  font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+  width: 100%; padding: 12px 15px 12px 40px; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm);
+  font-size: 0.98rem; font-family: inherit; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-900);
+  outline: none; transition: border-color .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease);
   background: var(--surface-soft);
 }
+input[type=text]::placeholder { font-weight: 500; color: var(--ink-300); }
 input[type=text]:focus { border-color: var(--amber-400); box-shadow: 0 0 0 4px rgba(245,166,35,.14); background: var(--surface); }
+input[type=text].input-invalid { border-color: #eab3ac; }
 button {
-  padding: 11px 20px; background: linear-gradient(180deg, var(--amber-400), var(--amber-500));
+  position: relative; padding: 11px 20px; background: linear-gradient(180deg, var(--amber-400), var(--amber-500));
   color: #fff; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem;
-  cursor: pointer; font-weight: 700; white-space: nowrap; transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .15s var(--ease);
+  cursor: pointer; font-weight: 700; white-space: nowrap; transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .15s var(--ease), filter .15s var(--ease);
   box-shadow: var(--shadow-sm);
 }
-button:hover { background: linear-gradient(180deg, var(--amber-500), var(--amber-600)); transform: translateY(-1px); box-shadow: var(--shadow-md); }
-button:active { transform: translateY(0); }
-.error { background: var(--danger-bg); border: 1px solid #f6c9c5; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 0.85rem; color: var(--danger); margin-top: 10px; display: none; }
-.hint { font-size: 0.78rem; color: var(--ink-400); text-align: center; margin-top: 14px; }
+button:hover { background: linear-gradient(180deg, var(--amber-500), var(--amber-600)); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+button:active { transform: translateY(0); filter: brightness(.97); }
+button:disabled { cursor: default; transform: none !important; }
+#btn-ingresar { display: inline-flex; align-items: center; justify-content: center; min-width: 118px; }
+#btn-ingresar .btn-idle { display: inline-flex; align-items: center; gap: 7px; }
+#btn-ingresar .btn-idle svg { width: 15px; height: 15px; transition: transform .18s var(--ease); }
+#btn-ingresar:hover .btn-idle svg { transform: translateX(2px); }
+#btn-ingresar .btn-loading { display: none; align-items: center; gap: 8px; }
+#btn-ingresar.is-loading .btn-idle { display: none; }
+#btn-ingresar.is-loading .btn-loading { display: inline-flex; }
+#btn-ingresar.is-loading { background: linear-gradient(180deg, var(--amber-500), var(--amber-600)); box-shadow: var(--shadow-sm); }
+.spinner {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.45); border-top-color: #fff;
+  animation: spin .65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error {
+  display: none; align-items: flex-start; gap: 9px;
+  background: var(--danger-bg); border: 1px solid #f6c9c5; border-radius: var(--radius-sm);
+  padding: 11px 13px; font-size: 0.84rem; color: var(--danger); margin-top: 12px; line-height: 1.45;
+}
+.error .error-icon { flex-shrink: 0; margin-top: 1px; }
+.error .error-icon svg { width: 16px; height: 16px; }
+.hint { font-size: 0.76rem; color: var(--ink-400); text-align: center; margin-top: 16px; line-height: 1.5; letter-spacing: 0.01em; }
 
 /* =====================================================================
    DASHBOARD SHELL
@@ -338,12 +381,19 @@ a.btn-descargar:hover { background: linear-gradient(180deg, var(--amber-500), va
 
   <!-- ============ VISTA: INGRESO ============ -->
   <div class="card" id="vista-login">
+    <div class="login-eyebrow">Acceso alumnos</div>
     <label for="rut-input">Ingresa con tu RUT</label>
     <div class="input-row">
-      <input type="text" id="rut-input" placeholder="12.345.678-9" maxlength="13" autocomplete="off">
-      <button onclick="ingresar()">Ingresar →</button>
+      <div class="input-wrap">
+        <span class="input-icon ico-idcard"></span>
+        <input type="text" id="rut-input" placeholder="12.345.678-9" maxlength="12" autocomplete="off" inputmode="text">
+      </div>
+      <button id="btn-ingresar" onclick="ingresar()">
+        <span class="btn-idle">Ingresar<span class="ico-arrow"></span></span>
+        <span class="btn-loading"><span class="spinner"></span>Verificando…</span>
+      </button>
     </div>
-    <div class="error" id="error-msg"></div>
+    <div class="error" id="error-msg"><span class="error-icon ico-alert"></span><span class="error-text"></span></div>
     <p class="hint">Puedes escribirlo con o sin puntos, pero siempre con el guión (ej: 12.345.678-9).</p>
   </div>
 
@@ -425,14 +475,18 @@ const ICONS = {
   filePpt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 17v-5h1.8a1.7 1.7 0 0 1 0 3.4H9"/></svg>',
   video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.7" y="5.5" width="14" height="13" rx="2.5"/><path d="M16.7 10l4.6-2.7v9.4L16.7 14"/></svg>',
   link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M11 6.5l1.2-1.2a3.6 3.6 0 0 1 5.1 5.1L16 11.6"/><path d="M13 17.5l-1.2 1.2a3.6 3.6 0 0 1-5.1-5.1L8 12.4"/></svg>',
-  audio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6.3L20 4v11.7"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="16.2" r="2.5"/></svg>'
+  audio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6.3L20 4v11.7"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="16.2" r="2.5"/></svg>',
+  idCard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10.3" r="2.1"/><path d="M5.5 16.8c.6-1.9 1.9-2.8 3.5-2.8s2.9.9 3.5 2.8"/><path d="M14.5 8.7h4"/><path d="M14.5 12h4"/></svg>',
+  arrowRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12h15"/><path d="M13 5.5l6.5 6.5-6.5 6.5"/></svg>',
+  alertCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg>'
 };
 
 /* Inyecta cada icono en su placeholder <span class="ico-*"> del HTML estático. */
 const ICON_SLOTS = {
   'ico-materiales': 'book', 'ico-tareas': 'tasks', 'ico-grupo': 'users', 'ico-notas': 'chart',
   'ico-asistencia': 'calendarCheck', 'ico-observaciones': 'fileEdit', 'ico-avisos': 'megaphone',
-  'ico-horario': 'clock', 'ico-salir': 'logout', 'ico-toggle': 'panel'
+  'ico-horario': 'clock', 'ico-salir': 'logout', 'ico-toggle': 'panel',
+  'ico-idcard': 'idCard', 'ico-arrow': 'arrowRight', 'ico-alert': 'alertCircle'
 };
 for (const [slotClass, iconKey] of Object.entries(ICON_SLOTS)) {
   const el = document.querySelector('.' + slotClass);
@@ -973,20 +1027,61 @@ function normRut(r) { return r.replace(/[\s.\-]/g, '').toUpperCase(); }
 function initials(n) { return n.split(/[\s,]+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase(); }
 function fmtNota(v) { return (v === null || v === undefined) ? '<span class="pendiente">Pendiente</span>' : v; }
 
-function ingresar() {
-  const raw = document.getElementById('rut-input').value.trim();
+/* Formatea el RUT mientras el alumno escribe: 12.345.678-9 */
+function formatRut(valor) {
+  const limpio = valor.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9);
+  if (limpio.length === 0) return '';
+  if (limpio.length === 1) return limpio;
+  const dv = limpio.slice(-1);
+  const cuerpo = limpio.slice(0, -1);
+  let cuerpoFmt = '';
+  for (let i = 0; i < cuerpo.length; i++) {
+    const posDesdeElFinal = cuerpo.length - i;
+    cuerpoFmt += cuerpo[i];
+    if (posDesdeElFinal > 1 && (posDesdeElFinal - 1) % 3 === 0) cuerpoFmt += '.';
+  }
+  return cuerpoFmt + '-' + dv;
+}
+
+function mostrarError(mensaje) {
   const err = document.getElementById('error-msg');
-  err.style.display = 'none';
-  if (!raw) { err.textContent = 'Por favor ingresa tu RUT.'; err.style.display = 'block'; return; }
+  err.querySelector('.error-text').textContent = mensaje;
+  err.style.display = 'flex';
+  document.getElementById('rut-input').classList.add('input-invalid');
+}
+function ocultarError() {
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('rut-input').classList.remove('input-invalid');
+}
+
+let ingresoEnCurso = false;
+function ingresar() {
+  if (ingresoEnCurso) return;
+  const raw = document.getElementById('rut-input').value.trim();
+  ocultarError();
+  if (!raw) { mostrarError('Por favor ingresa tu RUT.'); return; }
+
+  ingresoEnCurso = true;
+  const btn = document.getElementById('btn-ingresar');
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  /* Pequeña demora simulada para transmitir que el portal está verificando el RUT. */
+  setTimeout(() => {
+    procesarIngreso(raw);
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+    ingresoEnCurso = false;
+  }, 550);
+}
+
+function procesarIngreso(raw) {
   const key = Object.keys(alumnos).find(k => normRut(k) === normRut(raw));
   if (!key) {
-    err.textContent = 'RUT no encontrado. Verifica que esté bien escrito, incluyendo el guión y el dígito verificador.';
-    err.style.display = 'block';
+    mostrarError('RUT no encontrado. Verifica que esté bien escrito, incluyendo el guión y el dígito verificador.');
     return;
   }
   if (alumnos[key].bloqueado) {
-    err.textContent = 'Tu acceso al portal está temporalmente restringido. Contacta a tu profesor.';
-    err.style.display = 'block';
+    mostrarError('Tu acceso al portal está temporalmente restringido. Contacta a tu profesor.');
     return;
   }
   alumnoActual = { rut: key, ...alumnos[key] };
@@ -1010,6 +1105,7 @@ function ingresar() {
 function salir() {
   alumnoActual = null;
   document.getElementById('rut-input').value = '';
+  ocultarError();
   document.getElementById('vista-panel').style.display = 'none';
   document.getElementById('vista-login').style.display = 'block';
   document.body.classList.remove('logged-in');
@@ -1278,7 +1374,12 @@ function renderHorario() {
 }
 
 document.getElementById('rut-input').addEventListener('keydown', e => { if (e.key === 'Enter') ingresar(); });
-document.getElementById('rut-input').addEventListener('input', () => { document.getElementById('error-msg').style.display = 'none'; });
+document.getElementById('rut-input').addEventListener('input', (e) => {
+  const cursorAlFinal = e.target.selectionEnd === e.target.value.length;
+  e.target.value = formatRut(e.target.value);
+  if (cursorAlFinal) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+  ocultarError();
+});
 </script>
 </body>
 </html>
