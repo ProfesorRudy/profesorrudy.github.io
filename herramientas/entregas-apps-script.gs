@@ -176,7 +176,10 @@ function datosPanel(d) {
       alumnos[a.rut] = { nombre: a.nombre, bloqueado: a.bloqueado, cursos: a.cursos };
       asistencia[a.rut] = datos.asistencia[normRut(a.rut)] || {};
     }
-    extra.datos = { alumnos: alumnos, asistencia: asistencia, tareas: datos.tareas, cursosCursados: datos.cursosCursados };
+    extra.datos = {
+      alumnos: alumnos, asistencia: asistencia, tareas: datos.tareas, cursosCursados: datos.cursosCursados,
+      materiales: datos.materiales, trabajoGrupo: datos.trabajoGrupo, horarios: datos.horarios
+    };
     extra.datosPlanilla = datos.url;
   }
   return responder(true, 'Datos del panel.', extra);
