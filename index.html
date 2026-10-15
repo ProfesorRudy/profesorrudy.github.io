@@ -239,6 +239,18 @@ table.profe-tabla { width: 100%; min-width: 540px; border-collapse: collapse; fo
 .entrega-linea a { color: var(--blue-600); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
 .entrega-linea a:hover { text-decoration: underline; }
 .entrega-linea .cuando { color: var(--ink-400); white-space: nowrap; margin-left: auto; font-size: 0.74rem; }
+.asis-tabla td.c, .asis-tabla th.c { text-align: center; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.asis-tabla td.c span { display: inline-block; min-width: 26px; padding: 2px 0; border-radius: 6px; font-weight: 700; font-size: 0.78rem; }
+.asis-P { background: #e7f7ee; color: #146c3a; }
+.asis-M { background: #fff4e5; color: #a15c07; }
+.asis-A { background: #fdecea; color: #b42318; }
+.asis-T { background: #eef2f7; color: #475569; }
+.asis-tabla tfoot td { background: var(--surface-soft); font-weight: 700; font-size: 0.76rem; color: var(--ink-700); }
+.mat-linea { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-top: 1px dashed var(--border); }
+.mat-linea:first-of-type { border-top: none; }
+.mat-linea .material-info { flex: 1; min-width: 0; }
+.mat-linea a.btn-descargar { padding: 6px 12px; font-size: 0.74rem; }
+.mat-grupo { font-size: 0.74rem; font-weight: 700; color: var(--ink-500); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 2px; }
 .profe-nota { font-size: 0.76rem; color: var(--ink-400); margin-top: 8px; line-height: 1.45; }
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
@@ -597,7 +609,8 @@ a.contacto-item { text-decoration: none; color: inherit; }
       <div class="profe-toolbar">
         <label for="profe-curso">Curso</label>
         <select id="profe-curso" onchange="renderPanelProfesor()"></select>
-        <a class="btn-descargar" id="profe-planilla" href="#" target="_blank" rel="noopener" style="display:none;"><span class="ico-external"></span><span>Abrir planilla</span></a>
+        <a class="btn-descargar" id="profe-datos" href="#" target="_blank" rel="noopener" style="display:none;"><span class="ico-external"></span><span>Planilla de datos</span></a>
+        <a class="btn-descargar" id="profe-planilla" href="#" target="_blank" rel="noopener" style="display:none;"><span class="ico-external2"></span><span>Registro de entregas</span></a>
       </div>
       <div id="profe-contenido"></div>
     </div>
@@ -710,7 +723,7 @@ const ICON_SLOTS = {
   'ico-materiales': 'book', 'ico-tareas': 'tasks', 'ico-entregas': 'upload', 'ico-grupo': 'users', 'ico-notas': 'chart',
   'ico-asistencia': 'calendarCheck', 'ico-observaciones': 'fileEdit', 'ico-avisos': 'megaphone',
   'ico-horario': 'clock', 'ico-reloj': 'clock', 'ico-profesor': 'user', 'ico-salir': 'logout', 'ico-toggle': 'panel',
-  'ico-idcard': 'idCard', 'ico-candado': 'lock', 'ico-candado2': 'lock', 'ico-alert2': 'alertCircle', 'ico-refresh': 'refresh', 'ico-salir2': 'logout', 'ico-external': 'external', 'avatar-cam': 'camera', 'ico-arrow': 'arrowRight', 'ico-alert': 'alertCircle'
+  'ico-idcard': 'idCard', 'ico-candado': 'lock', 'ico-candado2': 'lock', 'ico-alert2': 'alertCircle', 'ico-refresh': 'refresh', 'ico-salir2': 'logout', 'ico-external': 'external', 'ico-external2': 'external', 'avatar-cam': 'camera', 'ico-arrow': 'arrowRight', 'ico-alert': 'alertCircle'
 };
 for (const [slotClass, iconKey] of Object.entries(ICON_SLOTS)) {
   const el = document.querySelector('.' + slotClass);
@@ -1420,6 +1433,9 @@ async function pedirDatosPanel(clave) {
     asistencia = r.datos.asistencia;
     tareas = r.datos.tareas || {};
     CURSOS_SOLO_CALIFICACIONES = r.datos.cursosCursados || [];
+    materiales = r.datos.materiales || null;
+    trabajoGrupo = r.datos.trabajoGrupo || {};
+    horarios = r.datos.horarios || {};
   }
   return r;
 }
@@ -1496,6 +1512,8 @@ function renderPanelProfesor() {
   const cont = document.getElementById('profe-contenido');
   const planilla = document.getElementById('profe-planilla');
   if (profeDatos.planilla) { planilla.href = profeDatos.planilla; planilla.style.display = 'inline-flex'; }
+  const botonDatos = document.getElementById('profe-datos');
+  if (profeDatos.datosPlanilla) { botonDatos.href = profeDatos.datosPlanilla; botonDatos.style.display = 'inline-flex'; }
   document.getElementById('profe-sub').textContent = profesor.nombre + ' · datos actualizados ' + fechaCorta(new Date().toISOString());
 
   const norm = r => String(r).replace(/[\s.\-]/g, '').toUpperCase();
@@ -1531,6 +1549,31 @@ function renderPanelProfesor() {
     '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
     '<div class="kpi"><div class="kpi-label">Entregas recibidas</div><div class="kpi-valor">' + entregas.length + '</div><div class="kpi-sub">en este curso</div></div>' +
     '</div>';
+
+  // Materiales publicados (lo mismo que ve el alumno)
+  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Materiales publicados</div>';
+  if (materiales === null) {
+    html += '<p class="sin-materiales">Actualiza el script de Google (Nueva versión) para ver aquí los materiales de la planilla.</p>';
+  } else {
+    const grupos = [['Materias y Materiales', (materiales || {})[curso] || []], ['Trabajo en grupo', trabajoGrupo[curso] || []], ['Tareas a realizar', tareas[curso] || []]];
+    let total = 0;
+    for (const [nombre, items] of grupos) {
+      if (!items.length) continue;
+      total += items.length;
+      html += '<div class="mat-grupo">' + nombre + ' (' + items.length + ')</div>';
+      for (const m of items) {
+        const enlace = m.url ? '<a class="btn-descargar" href="' + escHtml(m.url) + '" target="_blank" rel="noopener">' + ICONS.external + '<span>Abrir</span></a>' : '<span class="tag gris">Sin archivo</span>';
+        html += '<div class="mat-linea"><div class="material-icon">' + (iconos[m.tipo] || ICONS.filePdf) + '</div>' +
+          '<div class="material-info"><div class="material-nombre">' + escHtml(m.titulo) + '</div>' +
+          '<div class="material-desc">' + escHtml(m.desc || '') + (m.fecha ? ' · Entrega: ' + escHtml(m.fecha) : '') + '</div></div>' + enlace + '</div>';
+      }
+    }
+    if (!total) html += '<p class="sin-materiales">Este curso aún no tiene materiales en la planilla.</p>';
+    else html += '<p class="profe-nota">Pulsa "Abrir" para comprobar que cada archivo abre. Si Google pide permiso, el archivo no está compartido con "cualquier persona con el enlace".</p>';
+  }
+  const h = horarios[curso];
+  if (h) html += '<p class="profe-nota">Horario: ' + escHtml(h.dia) + ' · ' + escHtml(h.hora) + ' · ' + escHtml(h.modalidad) + ' · ' + escHtml(h.lugar) + '</p>';
+  html += '</div>';
 
   // Entregas por trabajo
   html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.upload + ' Entregas por trabajo</div>';
@@ -1575,20 +1618,35 @@ function renderPanelProfesor() {
   }
   html += '</tbody></table></div><p class="profe-nota">Asistencia: Presente = 1, Media clase = 0,5. Bajo 75 % en rojo o naranjo. Los ingresos se registran desde que se activó el registro en Google Drive.</p></div>';
 
-  // Asistencia por clase
-  const fechas = {};
-  for (const a of activos) for (const r of ((asistencia[a.rut] || {})[curso] || [])) {
-    if (!fechas[r.fecha]) fechas[r.fecha] = { p: 0, m: 0, a: 0 };
-    if (r.estado === 'Presente') fechas[r.fecha].p++; else if (r.estado === 'Media clase') fechas[r.fecha].m++; else fechas[r.fecha].a++;
-  }
+  // Asistencia: lista completa (alumnos × clases), tal como está en la planilla
   const orden = f => f.split('-').reverse().join('');
-  const listaF = Object.keys(fechas).sort((x, y) => orden(x).localeCompare(orden(y)));
-  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.calendarCheck + ' Asistencia por clase</div>';
+  const setF = new Set();
+  for (const a of matriculados) for (const r of ((asistencia[a.rut] || {})[curso] || [])) setF.add(r.fecha);
+  const listaF = [...setF].sort((x, y) => orden(x).localeCompare(orden(y)));
+  const corto = f => f.slice(0, 5);
+  const marca = { 'Presente': ['/', 'P'], 'Media clase': ['%', 'M'], 'Ausente': ['x', 'A'], 'Atraso': ['A', 'T'] };
+  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.calendarCheck + ' Lista de asistencia' +
+    (listaF.length ? ' <span class="tag gris">' + listaF.length + ' clase(s) · última: ' + listaF[listaF.length - 1] + '</span>' : '') + '</div>';
   if (!listaF.length) html += '<p class="sin-materiales">Aún no hay asistencia registrada en este curso.</p>';
   else {
-    html += '<div class="tabla-wrap"><table class="profe-tabla"><thead><tr><th>Clase</th><th class="num">Presentes</th><th class="num">Media clase</th><th class="num">Ausentes</th></tr></thead><tbody>';
-    for (const f of listaF) html += '<tr><td>' + f + '</td><td class="num">' + fechas[f].p + '</td><td class="num">' + fechas[f].m + '</td><td class="num">' + fechas[f].a + '</td></tr>';
-    html += '</tbody></table></div>';
+    const tot = listaF.map(() => ({ p: 0, m: 0, a: 0 }));
+    html += '<div class="tabla-wrap"><table class="profe-tabla asis-tabla"><thead><tr><th>Alumno</th>' +
+      listaF.map(f => '<th class="c" title="' + f + '">' + corto(f) + '</th>').join('') + '<th class="num">%</th></tr></thead><tbody>';
+    for (const a of matriculados) {
+      const regs = {};
+      for (const r of ((asistencia[a.rut] || {})[curso] || [])) regs[r.fecha] = r.estado;
+      html += '<tr><td>' + escHtml(a.nombre) + (a.bloqueado ? ' <span class="tag mal">Bloqueado</span>' : '') + '</td>';
+      listaF.forEach((f, k) => {
+        const e = regs[f];
+        if (e && !a.bloqueado) { if (e === 'Presente') tot[k].p++; else if (e === 'Media clase') tot[k].m++; else tot[k].a++; }
+        html += '<td class="c">' + (e ? '<span class="asis-' + marca[e][1] + '" title="' + e + '">' + marca[e][0] + '</span>' : '<span class="asis-T" title="Sin registro">·</span>') + '</td>';
+      });
+      const p = pctAsistencia((asistencia[a.rut] || {})[curso]);
+      html += '<td class="num">' + (p === null ? '—' : p + '%') + '</td></tr>';
+    }
+    html += '</tbody><tfoot><tr><td>Presentes / media / ausentes</td>' +
+      tot.map(t => '<td class="c">' + t.p + '/' + t.m + '/' + t.a + '</td>').join('') + '<td></td></tr></tfoot></table></div>' +
+      '<p class="profe-nota">/ presente · % media clase · x ausente · A atraso · "·" sin registro. Si falta una clase o un alumno, revisa la pestaña "Asist." del curso en la planilla de datos.</p>';
   }
   html += '</div>';
 
