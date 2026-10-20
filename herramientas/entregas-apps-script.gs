@@ -20,6 +20,10 @@
  * curso y por trabajo, la planilla "Registro de entregas" y la carpeta
  * "Fotos de alumnos" (un archivo por RUT; borra uno para quitar esa foto).
  *
+ * Cada alumno ve en el portal sus propias entregas y puede descargarlas para
+ * corregirlas y reenviarlas (se guardan como entregas nuevas). El script revisa
+ * su RUT y clave antes de entregar un archivo, y nunca entrega archivos de otro alumno.
+ *
  * Panel del profesor: en Configuración del proyecto (engranaje) > Propiedades de
  * la secuencia de comandos, agrega la propiedad CLAVE_PROFESOR con tu clave.
  * El panel del portal pide esa clave para mostrar ingresos y entregas.
@@ -48,6 +52,8 @@ function doPost(e) {
     if (d.accion === 'ingreso') return registrarIngreso(d);
     if (d.accion === 'panel') return datosPanel(d);
     if (d.accion === 'datos') return datosAlumno(d);
+    if (d.accion === 'misEntregas') return misEntregas(d);
+    if (d.accion === 'descargarEntrega') return descargarEntrega(d);
     const rut = String(d.rut || '').trim();
     const curso = String(d.curso || '').trim();
     const tarea = limpiar(String(d.tarea || '').trim()) || 'Trabajo';
@@ -120,6 +126,49 @@ function guardarFoto(d) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/* Entregas del propio alumno (para verlas y descargarlas desde cualquier dispositivo).
+   Valida RUT y clave igual que al entregar; nunca devuelve archivos de otro alumno. */
+function misEntregas(d) {
+  const rut = String(d.rut || '').trim();
+  if (!rut) return responder(false, 'Falta el RUT.');
+  if (!buscarAlumno(rut, null, d.clave)) return responder(false, 'RUT no habilitado en el portal.');
+  const entregas = filasDelAlumno(rut).map(f => ({
+    id: idDeArchivo(f[7]),
+    fecha: f[0] instanceof Date ? f[0].toISOString() : String(f[0]),
+    curso: f[3], trabajo: f[4], archivo: f[5], comentario: f[6]
+  })).filter(e => e.id).reverse();
+  return responder(true, 'Entregas del alumno.', { entregas: entregas });
+}
+
+function descargarEntrega(d) {
+  const rut = String(d.rut || '').trim();
+  const id = String(d.id || '').trim();
+  if (!rut || !id) return responder(false, 'Faltan datos.');
+  if (!buscarAlumno(rut, null, d.clave)) return responder(false, 'RUT no habilitado en el portal.');
+  const fila = filasDelAlumno(rut).filter(f => idDeArchivo(f[7]) === id)[0];
+  if (!fila) return responder(false, 'Ese archivo no es una entrega tuya.');
+  try {
+    const archivo = DriveApp.getFileById(id);
+    if (archivo.isTrashed()) return responder(false, 'El profesor ya no tiene este archivo.');
+    const blob = archivo.getBlob();
+    return responder(true, 'Archivo.', { archivo: String(fila[5] || archivo.getName()), tipo: blob.getContentType(), datos: Utilities.base64Encode(blob.getBytes()) });
+  } catch (err) {
+    return responder(false, 'El profesor ya no tiene este archivo.');
+  }
+}
+
+function filasDelAlumno(rut) {
+  const hoja = registro();
+  if (hoja.getLastRow() < 2) return [];
+  const k = normRut(rut);
+  return hoja.getRange(2, 1, hoja.getLastRow() - 1, 8).getValues().filter(f => normRut(f[2]) === k);
+}
+
+function idDeArchivo(url) {
+  const m = String(url || '').match(/\/d\/([\w-]+)/) || String(url || '').match(/[?&]id=([\w-]+)/);
+  return m ? m[1] : '';
 }
 
 /* Guarda la fecha de este ingreso y devuelve la del ingreso anterior. */

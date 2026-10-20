@@ -503,6 +503,14 @@ button.btn-quitar:hover { background: var(--surface-sunk); color: var(--ink-800)
 .entrega-msg.info { display: block; background: var(--blue-50); color: var(--blue-700); border: 1px solid var(--blue-100); }
 .entrega-historial { margin-top: 4px; }
 .entrega-historial .material-item { margin-bottom: 7px; }
+.entrega-historial .material-item { flex-wrap: wrap; row-gap: 10px; }
+.entrega-historial .material-info { min-width: 220px; }
+.entrega-acciones { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+.entrega-acciones button { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; padding: 7px 13px; border-radius: 99px; white-space: nowrap; }
+.entrega-acciones button svg { width: 14px; height: 14px; }
+.entrega-acciones button.btn-quitar { color: var(--blue-600); border-color: var(--blue-100); }
+.etiqueta-ultima { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: #e7f7ee; color: #146c3a; margin-left: 6px; vertical-align: 1px; }
+@media (max-width: 560px) { .entrega-historial .entrega-acciones { margin-left: 49px; justify-content: flex-start; } }
 
 /* Contacto del profesor */
 .profesor-perfil { display: flex; align-items: center; gap: 16px; margin-bottom: 1.1rem; }
@@ -1285,10 +1293,10 @@ function renderEntregas() {
     '<label for="ent-comentario">Comentario para el profesor (opcional)</label><textarea id="ent-comentario" maxlength="1000"></textarea>' +
     '<div class="entrega-botones"><button type="button" id="ent-enviar" onclick="enviarEntrega()">' + ICONS.upload + '<span>Entregar trabajo</span></button></div>' +
     '<div class="entrega-msg" id="ent-msg"></div></div>';
-  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.checkCircle + ' Mis entregas en este dispositivo</div><div class="entrega-historial" id="ent-historial"></div></div>';
+  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.checkCircle + ' Mis entregas</div><div class="entrega-historial" id="ent-historial"><p class="sin-materiales">Cargando tus entregas…</p></div></div>';
   cont.innerHTML = html;
   actualizarTrabajos();
-  renderHistorialEntregas();
+  cargarMisEntregas();
   const drop = document.getElementById('ent-drop');
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); drop.click(); } });
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -1367,7 +1375,7 @@ async function enviarEntrega() {
     mensajeEntrega('ok', '<strong>✓ Trabajo recibido.</strong> ' + escHtml(trabajo) + ' · ' + escHtml(curso) + ' · ' + escHtml(registro.archivo) + ' (' + registro.fecha + ').');
     quitarArchivo();
     document.getElementById('ent-comentario').value = '';
-    renderHistorialEntregas();
+    cargarMisEntregas();
   } catch (err) {
     mensajeEntrega('error', 'No se pudo entregar el trabajo: ' + escHtml(err.message) + '<br>Inténtalo de nuevo o envíalo al profesor desde "Contacto del Profesor".');
   } finally {
@@ -1376,15 +1384,99 @@ async function enviarEntrega() {
   }
 }
 
+/* Mis entregas: la lista viene del script de Google (las entregas del alumno desde
+   cualquier dispositivo). Si el script aún no tiene esa función, se muestra la lista
+   guardada en este dispositivo, sin descarga. */
+let misEntregas = null;
+
+async function cargarMisEntregas() {
+  const cont = document.getElementById('ent-historial');
+  if (!cont) return;
+  misEntregas = null;
+  try {
+    const r = await (await fetch(ENTREGAS_URL, { method: 'POST', body: JSON.stringify({ accion: 'misEntregas', rut: alumnoActual.rut, clave: claveAlumno }) })).json();
+    if (r.ok && Array.isArray(r.entregas)) misEntregas = r.entregas;
+  } catch (e) { /* sin conexión con el script: se usa la lista local */ }
+  renderHistorialEntregas();
+}
+
+function fechaEntrega(iso) {
+  const f = new Date(iso);
+  if (isNaN(f)) return String(iso || '');
+  return f.toLocaleDateString('es-CL') + ' ' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+}
+
 function renderHistorialEntregas() {
   const cont = document.getElementById('ent-historial');
   if (!cont) return;
-  const h = historialEntregas();
-  cont.innerHTML = h.length === 0
-    ? '<p class="sin-materiales">Aún no has entregado trabajos desde este dispositivo.</p>'
-    : h.map(e => '<div class="material-item"><div class="material-icon">' + ICONS.checkCircle + '</div>' +
-        '<div class="material-info"><div class="material-nombre">' + escHtml(e.trabajo) + ' · ' + escHtml(e.curso) + '</div>' +
-        '<div class="material-desc">' + escHtml(e.archivo) + ' · entregado el ' + escHtml(e.fecha) + '</div></div></div>').join('');
+  if (!misEntregas) {
+    const h = historialEntregas();
+    cont.innerHTML = h.length === 0
+      ? '<p class="sin-materiales">Aún no has entregado trabajos desde este dispositivo.</p>'
+      : h.map(e => '<div class="material-item"><div class="material-icon">' + ICONS.checkCircle + '</div>' +
+          '<div class="material-info"><div class="material-nombre">' + escHtml(e.trabajo) + ' · ' + escHtml(e.curso) + '</div>' +
+          '<div class="material-desc">' + escHtml(e.archivo) + ' · entregado el ' + escHtml(e.fecha) + '</div></div></div>').join('');
+    return;
+  }
+  if (misEntregas.length === 0) { cont.innerHTML = '<p class="sin-materiales">Aún no has entregado trabajos.</p>'; return; }
+  const vistos = {};
+  cont.innerHTML = misEntregas.map((e, i) => {
+    const clave = e.curso + '|' + e.trabajo;
+    const ultima = !vistos[clave];
+    vistos[clave] = true;
+    return '<div class="material-item"><div class="material-icon">' + ICONS.fileDoc + '</div>' +
+      '<div class="material-info"><div class="material-nombre">' + escHtml(e.trabajo) + ' · ' + escHtml(e.curso) +
+        (ultima ? '<span class="etiqueta-ultima">Última versión</span>' : '') + '</div>' +
+      '<div class="material-desc">' + escHtml(e.archivo) + ' · entregado el ' + escHtml(fechaEntrega(e.fecha)) + '</div></div>' +
+      '<div class="entrega-acciones">' +
+        '<button type="button" id="ent-desc-' + i + '" onclick="descargarMiEntrega(' + i + ')">' + ICONS.download + '<span>Descargar</span></button>' +
+        '<button type="button" class="btn-quitar" onclick="reenviarEntrega(' + i + ')">' + ICONS.upload + '<span>Corregir y reenviar</span></button>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function descargarMiEntrega(i) {
+  const e = misEntregas && misEntregas[i];
+  if (!e) return;
+  const btn = document.getElementById('ent-desc-' + i);
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'Descargando…';
+  try {
+    const r = await (await fetch(ENTREGAS_URL, { method: 'POST', body: JSON.stringify({ accion: 'descargarEntrega', rut: alumnoActual.rut, clave: claveAlumno, id: e.id }) })).json();
+    if (!r.ok) throw new Error(r.mensaje || 'No se pudo descargar el archivo.');
+    const bin = atob(r.datos);
+    const bytes = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    const url = URL.createObjectURL(new Blob([bytes], { type: r.tipo || 'application/octet-stream' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.archivo || e.archivo || 'trabajo';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    mensajeEntrega('error', 'No se pudo descargar «' + escHtml(e.archivo) + '»: ' + escHtml(err.message));
+    document.getElementById('ent-msg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'Descargar';
+  }
+}
+
+/* Deja el formulario listo para entregar una versión corregida del mismo trabajo.
+   Se guarda como una entrega nueva: el profesor conserva también la anterior. */
+function reenviarEntrega(i) {
+  const e = misEntregas && misEntregas[i];
+  if (!e) return;
+  const selCurso = document.getElementById('ent-curso');
+  if ([...selCurso.options].some(o => o.value === e.curso)) { selCurso.value = e.curso; actualizarTrabajos(); }
+  const selTrabajo = document.getElementById('ent-trabajo');
+  if (![...selTrabajo.options].some(o => o.value === e.trabajo)) selTrabajo.add(new Option(e.trabajo, e.trabajo), 0);
+  selTrabajo.value = e.trabajo;
+  quitarArchivo();
+  mensajeEntrega('info', '<strong>Versión corregida de «' + escHtml(e.trabajo) + '».</strong> Si aún no lo tienes, descarga tu archivo, haz los cambios y cárgalo aquí arriba. Se enviará como una entrega nueva; el profesor conserva también la anterior.');
+  document.querySelector('.entrega-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* =====================================================================
