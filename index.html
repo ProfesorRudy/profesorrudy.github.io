@@ -1552,7 +1552,9 @@ async function ingresarProfesor() {
 function entrarPanelProfesor(yaCargado) {
   const sel = document.getElementById('profe-curso');
   const cursos = cursosDelPanel();
-  sel.innerHTML = cursos.map(c => '<option>' + escHtml(c) + '</option>').join('');
+  const finalizados = cursosFinalizadosDelPanel();
+  sel.innerHTML = '<optgroup label="Cursos en curso">' + cursos.map(c => '<option>' + escHtml(c) + '</option>').join('') + '</optgroup>' +
+    (finalizados.length ? '<optgroup label="Cursos finalizados">' + finalizados.map(c => '<option>' + escHtml(c) + '</option>').join('') + '</optgroup>' : '');
   if (cursos.includes('Evangelio de Lucas')) sel.value = 'Evangelio de Lucas';
   document.getElementById('profe-avatar').innerHTML = profesor.foto
     ? '<img src="' + escHtml(profesor.foto) + '" alt="" onerror="this.parentNode.textContent=\'' + escHtml(initials(profesor.nombre)) + '\'">'
@@ -1585,6 +1587,45 @@ function cursosDelPanel() {
   return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
+/* Cursos ya cerrados ("Cursada"): solo el profesor los ve en el panel. */
+function cursosFinalizadosDelPanel() {
+  const set = new Set();
+  for (const a of Object.values(alumnos)) for (const c of Object.keys(a.cursos)) if (CURSOS_SOLO_CALIFICACIONES.includes(c)) set.add(c);
+  return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/* Carpetas del portal (GitHub) con los archivos de cada curso, para revisar cursos finalizados. */
+const CARPETAS_CURSO = {
+  "Ética del A.T.": ["etica-at", "compartido"],
+  "Ética del Nuevo Testamento": ["etica-nt", "compartido"],
+  "Contexto del Antiguo Testamento": ["contexto-at"],
+  "Eclesiología y Pneumatología": ["eclesiologia"],
+  "Filosofía Antigua y Medieval": ["filosofia-antigua-medieval"],
+  "Evangelio de Lucas": ["evangelio-lucas"]
+};
+
+async function cargarArchivosCurso(curso) {
+  const cont = document.getElementById('profe-archivos');
+  if (!cont) return;
+  const carpetas = CARPETAS_CURSO[curso] || [];
+  if (!carpetas.length) { cont.innerHTML = '<p class="sin-materiales">No hay archivos de este curso guardados en el portal.</p>'; return; }
+  try {
+    const listas = await Promise.all(carpetas.map(c =>
+      fetch('https://api.github.com/repos/ProfesorRudy/profesorrudy.github.io/contents/materiales/' + c)
+        .then(r => r.ok ? r.json() : [])));
+    const archivos = listas.flat().filter(f => f && f.type === 'file');
+    if (document.getElementById('profe-curso').value !== curso) return;
+    if (!archivos.length) { cont.innerHTML = '<p class="sin-materiales">No hay archivos de este curso guardados en el portal.</p>'; return; }
+    const tipo = n => /\.pdf$/i.test(n) ? 'pdf' : (/\.docx?$/i.test(n) ? 'doc' : (/\.pptx?$/i.test(n) ? 'ppt' : (/\.(mp3|m4a|wav)$/i.test(n) ? 'audio' : 'link')));
+    cont.innerHTML = archivos.map(f => '<div class="mat-linea"><div class="material-icon">' + (iconos[tipo(f.name)] || ICONS.filePdf) + '</div>' +
+      '<div class="material-info"><div class="material-nombre">' + escHtml(f.name) + '</div>' +
+      '<div class="material-desc">' + escHtml(f.path.replace(/^materiales\//, '')) + ' · ' + tamanoLegible(f.size) + '</div></div>' +
+      '<a class="btn-descargar" href="' + escHtml(f.path) + '" target="_blank" rel="noopener">' + ICONS.external + '<span>Abrir</span></a></div>').join('');
+  } catch (e) {
+    cont.innerHTML = '<p class="sin-materiales">No se pudo cargar la lista de archivos. Revisa tu conexión.</p>';
+  }
+}
+
 function fechaCorta(iso) {
   const f = new Date(iso);
   if (isNaN(f)) return '—';
@@ -1609,8 +1650,9 @@ function renderPanelProfesor() {
   document.getElementById('profe-sub').textContent = profesor.nombre + ' · datos actualizados ' + fechaCorta(new Date().toISOString());
 
   const norm = r => String(r).replace(/[\s.\-]/g, '').toUpperCase();
+  const finalizado = CURSOS_SOLO_CALIFICACIONES.includes(curso);
   const matriculados = Object.entries(alumnos).filter(([, a]) => a.cursos[curso] !== undefined)
-    .map(([rut, a]) => ({ rut, nombre: a.nombre, bloqueado: !!a.bloqueado }))
+    .map(([rut, a]) => ({ rut, nombre: a.nombre, bloqueado: !!a.bloqueado, notas: a.cursos[curso] }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const activos = matriculados.filter(a => !a.bloqueado);
   const ruts = new Set(matriculados.map(a => norm(a.rut)));
@@ -1635,39 +1677,70 @@ function renderPanelProfesor() {
   const pcts = activos.map(a => pctAsistencia((asistencia[a.rut] || {})[curso])).filter(p => p !== null);
   const promAsis = pcts.length ? Math.round(pcts.reduce((x, y) => x + y, 0) / pcts.length) : null;
 
-  let html = '<div class="kpi-grid">' +
-    '<div class="kpi"><div class="kpi-label">Alumnos</div><div class="kpi-valor">' + activos.length + '</div><div class="kpi-sub">' + (matriculados.length - activos.length ? (matriculados.length - activos.length) + ' bloqueado(s)' : 'con acceso') + '</div></div>' +
-    '<div class="kpi"><div class="kpi-label">Entraron (7 días)</div><div class="kpi-valor">' + activos7 + '</div><div class="kpi-sub">de ' + activos.length + ' alumnos</div></div>' +
-    '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
-    '<div class="kpi"><div class="kpi-label">Entregas recibidas</div><div class="kpi-valor">' + entregas.length + '</div><div class="kpi-sub">en este curso</div></div>' +
-    '</div>';
-
-  // Materiales publicados (lo mismo que ve el alumno)
-  html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Materiales publicados</div>';
-  if (materiales === null) {
-    html += '<p class="sin-materiales">Actualiza el script de Google (Nueva versión) para ver aquí los materiales de la planilla.</p>';
-  } else {
-    const grupos = [['Materias y Materiales', (materiales || {})[curso] || []], ['Trabajo en grupo', trabajoGrupo[curso] || []], ['Tareas a realizar', tareas[curso] || []]];
-    let total = 0;
-    for (const [nombre, items] of grupos) {
-      if (!items.length) continue;
-      total += items.length;
-      html += '<div class="mat-grupo">' + nombre + ' (' + items.length + ')</div>';
-      for (const m of items) {
-        const enlace = m.url ? '<a class="btn-descargar" href="' + escHtml(m.url) + '" target="_blank" rel="noopener">' + ICONS.external + '<span>Abrir</span></a>' : '<span class="tag gris">Sin archivo</span>';
-        html += '<div class="mat-linea"><div class="material-icon">' + (iconos[m.tipo] || ICONS.filePdf) + '</div>' +
-          '<div class="material-info"><div class="material-nombre">' + escHtml(m.titulo) + '</div>' +
-          '<div class="material-desc">' + escHtml(m.desc || '') + (m.fecha ? ' · Entrega: ' + escHtml(m.fecha) : '') + '</div></div>' + enlace + '</div>';
-      }
+  let html;
+  if (finalizado) {
+    // Curso finalizado: notas finales y archivos del curso (solo lectura)
+    const conNota = activos.filter(a => a.notas && a.notas.notaFinal !== null && a.notas.notaFinal !== undefined);
+    const aprobados = conNota.filter(a => a.notas.notaFinal >= 60).length;
+    const prom = conNota.length ? (conNota.reduce((x, a) => x + a.notas.notaFinal, 0) / conNota.length).toFixed(1) : null;
+    html = '<p class="entrega-msg info" style="display:block;margin:0 0 14px;">Curso finalizado: los alumnos solo lo ven en "Mis Calificaciones" (Materias cursadas).</p>' +
+      '<div class="kpi-grid">' +
+      '<div class="kpi"><div class="kpi-label">Alumnos</div><div class="kpi-valor">' + activos.length + '</div><div class="kpi-sub">' + (matriculados.length - activos.length ? (matriculados.length - activos.length) + ' bloqueado(s)' : 'con acceso') + '</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Aprobados</div><div class="kpi-valor">' + aprobados + '</div><div class="kpi-sub">de ' + conNota.length + ' con nota final</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Promedio final</div><div class="kpi-valor">' + (prom === null ? '—' : prom) + '</div><div class="kpi-sub">escala 0 – 100</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
+      '</div>';
+    const fmt = v => (v === null || v === undefined) ? '<span class="rut">—</span>' : v;
+    html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.chart + ' Notas finales</div><div class="tabla-wrap"><table class="profe-tabla"><thead><tr>' +
+      '<th>Alumno</th><th class="num">Trabajo 1</th><th class="num">Trabajo 2</th><th class="num">Examen</th><th class="num">Nota final</th><th>Estado</th></tr></thead><tbody>';
+    for (const a of matriculados) {
+      const n = a.notas || {};
+      const nf = n.notaFinal;
+      const estado = (nf === null || nf === undefined) ? '<span class="tag gris">Sin nota final</span>' : (nf >= 60 ? '<span class="tag ok">Aprobado</span>' : '<span class="tag mal">Reprobado</span>');
+      html += '<tr><td>' + escHtml(a.nombre) + (a.bloqueado ? ' <span class="tag mal">Bloqueado</span>' : '') + '<div class="rut">' + escHtml(a.rut) + '</div></td>' +
+        '<td class="num">' + fmt(n.t1) + '</td><td class="num">' + fmt(n.t2) + '</td><td class="num">' + fmt(n.ex) + '</td><td class="num"><strong>' + fmt(nf) + '</strong></td><td>' + estado + '</td></tr>';
     }
-    if (!total) html += '<p class="sin-materiales">Este curso aún no tiene materiales en la planilla.</p>';
-    else html += '<p class="profe-nota">Pulsa "Abrir" para comprobar que cada archivo abre. Si Google pide permiso, el archivo no está compartido con "cualquier persona con el enlace".</p>';
+    html += '</tbody></table></div><p class="profe-nota">Nota mínima de aprobación: 60 pts. Las notas se editan en la pestaña "Notas" de la planilla de datos.</p></div>';
+    html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Archivos del curso</div><div id="profe-archivos"><p class="sin-materiales">Cargando archivos…</p></div>' +
+      '<p class="profe-nota">Archivos guardados en el portal para este curso. Los alumnos ya no los ven, porque el curso está finalizado.</p></div>';
+  } else {
+    html = '<div class="kpi-grid">' +
+      '<div class="kpi"><div class="kpi-label">Alumnos</div><div class="kpi-valor">' + activos.length + '</div><div class="kpi-sub">' + (matriculados.length - activos.length ? (matriculados.length - activos.length) + ' bloqueado(s)' : 'con acceso') + '</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Entraron (7 días)</div><div class="kpi-valor">' + activos7 + '</div><div class="kpi-sub">de ' + activos.length + ' alumnos</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Entregas recibidas</div><div class="kpi-valor">' + entregas.length + '</div><div class="kpi-sub">en este curso</div></div>' +
+      '</div>';
+
+    // Materiales publicados (lo mismo que ve el alumno)
+    html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Materiales publicados</div>';
+    if (materiales === null) {
+      html += '<p class="sin-materiales">Actualiza el script de Google (Nueva versión) para ver aquí los materiales de la planilla.</p>';
+    } else {
+      const grupos = [['Materias y Materiales', (materiales || {})[curso] || []], ['Trabajo en grupo', trabajoGrupo[curso] || []], ['Tareas a realizar', tareas[curso] || []]];
+      let total = 0;
+      for (const [nombre, items] of grupos) {
+        if (!items.length) continue;
+        total += items.length;
+        html += '<div class="mat-grupo">' + nombre + ' (' + items.length + ')</div>';
+        for (const m of items) {
+          const enlace = m.url ? '<a class="btn-descargar" href="' + escHtml(m.url) + '" target="_blank" rel="noopener">' + ICONS.external + '<span>Abrir</span></a>' : '<span class="tag gris">Sin archivo</span>';
+          html += '<div class="mat-linea"><div class="material-icon">' + (iconos[m.tipo] || ICONS.filePdf) + '</div>' +
+            '<div class="material-info"><div class="material-nombre">' + escHtml(m.titulo) + '</div>' +
+            '<div class="material-desc">' + escHtml(m.desc || '') + (m.fecha ? ' · Entrega: ' + escHtml(m.fecha) : '') + '</div></div>' + enlace + '</div>';
+        }
+      }
+      if (!total) html += '<p class="sin-materiales">Este curso aún no tiene materiales en la planilla.</p>';
+      else html += '<p class="profe-nota">Pulsa "Abrir" para comprobar que cada archivo abre. Si Google pide permiso, el archivo no está compartido con "cualquier persona con el enlace".</p>';
+    }
+    const h = horarios[curso];
+    if (h) html += '<p class="profe-nota">Horario: ' + escHtml(h.dia) + ' · ' + escHtml(h.hora) + ' · ' + escHtml(h.modalidad) + ' · ' + escHtml(h.lugar) + '</p>';
+    html += '</div>';
+
+
   }
-  const h = horarios[curso];
-  if (h) html += '<p class="profe-nota">Horario: ' + escHtml(h.dia) + ' · ' + escHtml(h.hora) + ' · ' + escHtml(h.modalidad) + ' · ' + escHtml(h.lugar) + '</p>';
-  html += '</div>';
 
   // Entregas por trabajo
+  if (!finalizado || entregas.length) {
   html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.upload + ' Entregas por trabajo</div>';
   if (trabajos.length === 0) html += '<p class="sin-materiales">No hay trabajos definidos para este curso.</p>';
   for (const t of trabajos) {
@@ -1687,15 +1760,17 @@ function renderPanelProfesor() {
           '<span class="cuando">' + fechaCorta(e.fecha) + '</span></div>';
       }
     }
-    if (pendientes.length && t !== 'Otro trabajo') {
+    if (pendientes.length && t !== 'Otro trabajo' && !finalizado) {
       html += '<div class="sub-titulo">Pendientes (' + pendientes.length + ')</div><div class="chips">' +
         pendientes.map(a => '<span class="chip pendiente">' + escHtml(a.nombre) + '</span>').join('') + '</div>';
     }
     html += '</div>';
   }
   html += '</div>';
+  }
 
-  // Tabla de alumnos
+  // Tabla de alumnos (ingresos y asistencia) — solo cursos en curso
+  if (!finalizado) {
   html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.users + ' Alumnos del curso</div><div class="tabla-wrap"><table class="profe-tabla"><thead><tr>' +
     '<th>Alumno</th><th>Último ingreso</th><th class="num">Ingresos</th><th class="num">Asistencia</th><th class="num">Entregas</th></tr></thead><tbody>';
   for (const a of matriculados) {
@@ -1709,6 +1784,7 @@ function renderPanelProfesor() {
       '<td class="num">' + (i ? i.n : 0) + '</td><td class="num">' + tagAsis + '</td><td class="num">' + ne + '</td></tr>';
   }
   html += '</tbody></table></div><p class="profe-nota">Asistencia: Presente = 1, Media clase = 0,5. Bajo 75 % en rojo o naranjo. Los ingresos se registran desde que se activó el registro en Google Drive.</p></div>';
+  }
 
   // Asistencia: lista completa (alumnos × clases), tal como está en la planilla
   const orden = f => f.split('-').reverse().join('');
@@ -1749,6 +1825,7 @@ function renderPanelProfesor() {
     : '<p class="sin-materiales">Aún no hay ingresos registrados.</p>';
   html += '</div>';
   cont.innerHTML = html;
+  if (finalizado) cargarArchivosCurso(curso);
 }
 
 /* ---------- Último ingreso (se registra en Google Drive vía ENTREGAS_URL) ---------- */
