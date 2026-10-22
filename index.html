@@ -799,7 +799,8 @@ let trabajoGrupo = {};
    los archivos en Google Drive (ver herramientas/entregas-apps-script.gs).
    Vacío = la pestaña muestra que la entrega en línea aún no está habilitada.
    trabajosEntrega: trabajos que se pueden elegir por curso. Si un curso no
-   aparece aquí, se usan los títulos de "Tareas a Realizar" y "Trabajo 1/2".
+   aparece aquí, se usan los títulos de "Tareas a Realizar" (y si aún no tiene
+   tareas, "Trabajo 1" y "Trabajo 2").
    ===================================================================== */
 const ENTREGAS_URL = "https://script.google.com/macros/s/AKfycbyTJt9bG-aaWNLa0Iuk21fYgbrmah6ZwFgWoTJhTgn8gYV4gixAPEUJ2YQxqZLBq4Mp/exec";
 const trabajosEntrega = {
@@ -1257,7 +1258,8 @@ const ENTREGA_EXT = ['doc', 'docx', 'pdf', 'odt', 'rtf', 'txt', 'ppt', 'pptx', '
 let entregaArchivo = null;
 
 function opcionesTrabajo(curso) {
-  const lista = trabajosEntrega[curso] || [...(tareas[curso] || []).map(t => t.titulo), 'Trabajo 1', 'Trabajo 2'];
+  const deTareas = (tareas[curso] || []).map(t => t.titulo).filter(Boolean);
+  const lista = trabajosEntrega[curso] || (deTareas.length ? deTareas : ['Trabajo 1', 'Trabajo 2']);
   return [...new Set(lista), 'Otro trabajo'];
 }
 
