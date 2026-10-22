@@ -389,6 +389,9 @@ table.profe-tabla { width: 100%; min-width: 540px; border-collapse: collapse; fo
   margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
 }
 .aviso-fecha svg { width: 13px; height: 13px; flex-shrink: 0; }
+.tarea-entregada { border-color: #bfe6cf; }
+.marca-entregado { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 2px; font-size: 0.78rem; font-weight: 700; color: #146c3a; background: #e7f7ee; border: 1px solid #bfe6cf; border-radius: 99px; padding: 3px 11px; }
+.marca-entregado svg { width: 14px; height: 14px; flex-shrink: 0; }
 .aviso-titulo { font-size: 0.92rem; font-weight: 700; color: var(--ink-900); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 .aviso-titulo svg { width: 15px; height: 15px; color: var(--blue-600); flex-shrink: 0; }
 .aviso-texto { font-size: 0.85rem; color: var(--ink-700); line-height: 1.55; }
@@ -954,6 +957,7 @@ function procesarIngreso(raw) {
     return;
   }
   alumnoActual = { rut: key, ...alumnos[key] };
+  misEntregas = null; // no mostrar entregas del alumno anterior en este dispositivo
   document.getElementById('avatar').textContent = initials(alumnoActual.nombre);
   document.getElementById('foto-aviso').className = 'foto-aviso';
   cargarFotoPerfil();
@@ -1062,11 +1066,14 @@ function renderTareas() {
       html += '<p class="sin-materiales">Aún no hay tareas asignadas para este curso.</p>';
     } else {
       for (const t of items) {
+        const entregado = entregaDeTarea(curso, t.titulo);
         const adjunto = t.url
           ? '<a class="btn-descargar" href="' + t.url + '" target="_blank" rel="noopener" download>' + ICONS.download + '<span>Descargar</span></a>'
           : '';
-        html += '<div class="aviso-item"><div class="aviso-fecha">' + ICONS.calendar + ' Fecha de entrega: ' + t.fecha + '</div>' +
+        html += '<div class="aviso-item' + (entregado ? ' tarea-entregada' : '') + '"><div class="aviso-fecha">' + ICONS.calendar + ' Fecha de entrega: ' + t.fecha + '</div>' +
           '<div class="aviso-titulo">' + t.titulo + '</div>' +
+          (entregado ? '<div class="marca-entregado">' + ICONS.checkCircle + '<span>Entregado el ' + escHtml(entregado.fecha) +
+            (entregado.envios > 1 ? ' · ' + entregado.envios + ' envíos' : '') + '</span></div>' : '') +
           '<div class="aviso-texto">' + (t.desc || '') + '</div>' +
           (adjunto ? '<div style="margin-top:8px;">' + adjunto + '</div>' : '') +
           '</div>';
@@ -1075,6 +1082,22 @@ function renderTareas() {
     html += '</div>';
   }
   cont.innerHTML = html;
+}
+
+/* ¿El alumno ya entregó esta tarea? Busca en sus entregas (del script o, si no
+   hay conexión, las de este dispositivo). Compara sin distinguir tildes,
+   mayúsculas ni espacios de más. */
+function claveTexto(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function entregaDeTarea(curso, titulo) {
+  const c = claveTexto(curso), t = claveTexto(titulo);
+  if (misEntregas) {
+    const de = misEntregas.filter(e => claveTexto(e.curso) === c && claveTexto(e.trabajo) === t);
+    if (!de.length) return null;
+    const ultima = de.reduce((a, b) => (String(b.fecha) > String(a.fecha) ? b : a));
+    return { fecha: fechaEntrega(ultima.fecha).split(' ')[0], envios: de.length };
+  }
+  const local = historialEntregas().filter(e => claveTexto(e.curso) === c && claveTexto(e.trabajo) === t);
+  return local.length ? { fecha: String(local[0].fecha).split(' ')[0], envios: local.length } : null;
 }
 
 function renderTrabajoGrupo() {
@@ -1400,6 +1423,7 @@ async function cargarMisEntregas() {
     if (r.ok && Array.isArray(r.entregas)) misEntregas = r.entregas;
   } catch (e) { /* sin conexión con el script: se usa la lista local */ }
   renderHistorialEntregas();
+  renderTareas();
 }
 
 function fechaEntrega(iso) {
