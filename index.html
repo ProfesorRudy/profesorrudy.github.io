@@ -1526,6 +1526,7 @@ async function pedirDatosPanel(clave) {
     tareas = r.datos.tareas || {};
     CURSOS_SOLO_CALIFICACIONES = r.datos.cursosCursados || [];
     materiales = r.datos.materiales || null;
+    profeObs = r.datos.observacionesCurso ? { curso: r.datos.observacionesCurso, alumno: r.datos.observaciones || {}, avisos: r.datos.avisos || [] } : null;
     trabajoGrupo = r.datos.trabajoGrupo || {};
     horarios = r.datos.horarios || {};
   }
@@ -1585,6 +1586,28 @@ function cursosDelPanel() {
   const set = new Set();
   for (const a of Object.values(alumnos)) for (const c of Object.keys(a.cursos)) if (!CURSOS_SOLO_CALIFICACIONES.includes(c)) set.add(c);
   return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+let profeObs = null;
+
+/* Observaciones y avisos que ven los alumnos del curso (para que el profesor los revise). */
+function htmlObservacionesCurso(curso, matriculados) {
+  let html = '<div class="curso-card"><div class="curso-titulo">' + ICONS.fileEdit + ' Observaciones y avisos</div>';
+  if (!profeObs) return html + '<p class="sin-materiales">Actualiza el script de Google (Nueva versión) para ver aquí las observaciones de la planilla.</p></div>';
+  const norm = r => String(r).replace(/[\s.\-]/g, '').toUpperCase();
+  const linea = (fecha, texto, extra) => '<div class="entrega-linea" style="display:block;"><span class="cuando" style="margin:0 8px 0 0;">' + escHtml(fecha || '') + '</span>' +
+    (extra ? '<strong>' + escHtml(extra) + ':</strong> ' : '') + escHtml(texto || '') + '</div>';
+  const delCurso = profeObs.curso[curso] || [];
+  const avisos = profeObs.avisos.filter(a => !a.curso || a.curso === curso);
+  const personales = [];
+  for (const a of matriculados) for (const o of (profeObs.alumno[norm(a.rut)] || [])) personales.push([a.nombre, o]);
+  html += '<div class="mat-grupo">Observaciones del curso (' + delCurso.length + ') · las ven todos los alumnos del curso</div>' +
+    (delCurso.length ? delCurso.map(o => linea(o.fecha, o.texto)).join('') : '<p class="sin-materiales">No hay observaciones para este curso.</p>');
+  html += '<div class="mat-grupo">Avisos (' + avisos.length + ')</div>' +
+    (avisos.length ? avisos.map(a => linea(a.fecha, (a.titulo ? a.titulo + ' — ' : '') + a.texto, a.curso ? '' : 'Para todos')).join('') : '<p class="sin-materiales">No hay avisos para este curso.</p>');
+  html += '<div class="mat-grupo">Observaciones personales (' + personales.length + ') · cada una la ve solo su alumno</div>' +
+    (personales.length ? personales.map(([n, o]) => linea(o.fecha, o.texto, n)).join('') : '<p class="sin-materiales">No hay observaciones personales para alumnos de este curso.</p>');
+  return html + '<p class="profe-nota">Se editan en las pestañas "Obs. por curso", "Obs. por alumno" y "Avisos" de la planilla de datos.</p></div>';
 }
 
 /* Tabla de notas del curso para el panel (cursos en curso y finalizados). */
@@ -1710,6 +1733,7 @@ function renderPanelProfesor() {
     html += htmlNotasCurso(matriculados, true);
     html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Archivos del curso</div><div id="profe-archivos"><p class="sin-materiales">Cargando archivos…</p></div>' +
       '<p class="profe-nota">Archivos guardados en el portal para este curso. Los alumnos ya no los ven, porque el curso está finalizado.</p></div>';
+    html += htmlObservacionesCurso(curso, matriculados);
   } else {
     html = '<div class="kpi-grid">' +
       '<div class="kpi"><div class="kpi-label">Alumnos</div><div class="kpi-valor">' + activos.length + '</div><div class="kpi-sub">' + (matriculados.length - activos.length ? (matriculados.length - activos.length) + ' bloqueado(s)' : 'con acceso') + '</div></div>' +
@@ -1745,6 +1769,8 @@ function renderPanelProfesor() {
 
 
   }
+
+  if (!finalizado) html += htmlObservacionesCurso(curso, matriculados);
 
   // Entregas por trabajo
   if (!finalizado || entregas.length) {

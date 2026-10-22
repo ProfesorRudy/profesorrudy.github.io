@@ -227,7 +227,8 @@ function datosPanel(d) {
     }
     extra.datos = {
       alumnos: alumnos, asistencia: asistencia, tareas: datos.tareas, cursosCursados: datos.cursosCursados,
-      materiales: datos.materiales, trabajoGrupo: datos.trabajoGrupo, horarios: datos.horarios
+      materiales: datos.materiales, trabajoGrupo: datos.trabajoGrupo, horarios: datos.horarios,
+      observacionesCurso: datos.observacionesCurso, observaciones: datos.observaciones, avisos: datos.avisos
     };
     extra.datosPlanilla = datos.url;
   }
