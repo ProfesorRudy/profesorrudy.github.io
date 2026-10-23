@@ -320,6 +320,28 @@ table.profe-tabla { width: 100%; min-width: 540px; border-collapse: collapse; fo
 .nav-item .nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 10px; }
 .sidebar.collapsed .nav-item .nav-label { display: none; }
+.nav-badge {
+  margin-left: auto; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 99px; flex-shrink: 0;
+  background: #e5484d; color: #fff; font-size: 0.7rem; font-weight: 800; line-height: 19px; text-align: center;
+  box-shadow: 0 0 0 2px var(--sidebar-bg, #0f2346);
+}
+.sidebar.collapsed .nav-badge { position: absolute; top: 3px; right: 5px; margin: 0; }
+.pill-nuevo {
+  display: inline-block; font-size: 0.66rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 99px; background: #fdecea; color: #c0392b; border: 1px solid #f5c6c0;
+  margin-left: 7px; vertical-align: 2px; white-space: nowrap;
+}
+.novedades-aviso {
+  display: none; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 13px;
+  border-radius: var(--radius-sm); background: #fff7e6; border: 1px solid #f6d7a7; color: #8a5a00; font-size: 0.84rem;
+}
+.novedades-aviso.visible { display: flex; }
+.novedades-aviso strong { color: #6b4400; }
+.novedades-aviso button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 99px; font-size: 0.78rem; font-weight: 700;
+  background: #fff; color: #8a5a00; border: 1px solid #f0c987; box-shadow: none;
+}
+.novedades-aviso button:hover { background: #fff1d6; transform: none; box-shadow: none; }
 .nav-exit {
   display: none; /* the topbar already exposes Salir; kept for potential future use */
 }
@@ -338,6 +360,7 @@ table.profe-tabla { width: 100%; min-width: 540px; border-collapse: collapse; fo
   }
   .sidebar-toggle { display: none; }
   .nav-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .nav-badge { position: absolute; top: 5px; right: 6px; margin: 0; box-shadow: none; }
   .nav-item {
     flex-direction: column; gap: 6px; padding: 10px 4px; text-align: center; min-width: 0;
     color: var(--ink-500); background: var(--surface); border: 1px solid var(--border);
@@ -670,6 +693,7 @@ a.contacto-item { text-decoration: none; color: inherit; }
 
       <main class="main-content">
         <div class="foto-aviso" id="foto-aviso"></div>
+        <div class="novedades-aviso" id="novedades-aviso"></div>
         <div id="seccion-materiales"></div>
         <div id="seccion-tareas" style="display:none;"></div>
         <div id="seccion-entregas" style="display:none;"></div>
@@ -964,6 +988,7 @@ function procesarIngreso(raw) {
   }
   alumnoActual = { rut: key, ...alumnos[key] };
   misEntregas = null; // no mostrar entregas del alumno anterior en este dispositivo
+  prepararNovedades();
   document.getElementById('avatar').textContent = initials(alumnoActual.nombre);
   document.getElementById('foto-aviso').className = 'foto-aviso';
   cargarFotoPerfil();
@@ -980,6 +1005,7 @@ function procesarIngreso(raw) {
   renderAvisos();
   renderHorario();
   renderProfesor();
+  actualizarNovedades();
   document.getElementById('vista-login').style.display = 'none';
   document.getElementById('vista-panel').style.display = 'block';
   document.body.classList.add('logged-in');
@@ -1009,6 +1035,7 @@ function mostrarSeccion(sec) {
     document.getElementById('seccion-' + s).style.display = (s === sec) ? 'block' : 'none';
     document.getElementById('tab-' + s).classList.toggle('active', s === sec);
   }
+  if (alumnoActual) marcarSeccionVista(sec);
 }
 
 /* Mensaje para el alumno que aún no tiene ninguna materia asignada. */
@@ -1037,7 +1064,7 @@ function renderMateriales() {
         if (m.tipo === 'audio') {
           html += '<div class="material-item material-audio">' +
             '<div class="material-icon">' + (iconos[m.tipo] || ICONS.audio) + '</div>' +
-            '<div class="material-info"><div class="material-nombre">' + m.titulo + '</div>' +
+            '<div class="material-info"><div class="material-nombre">' + m.titulo + pillNuevo(kMat(curso, m)) + '</div>' +
             '<div class="material-desc">' + (m.desc || '') + '</div>' +
             '<audio controls src="' + m.url + '"></audio>' +
             '</div></div>';
@@ -1048,7 +1075,7 @@ function renderMateriales() {
         const textoBoton = esLink ? (ICONS.external + '<span>Abrir</span>') : (ICONS.download + '<span>Descargar</span>');
         html += '<div class="material-item">' +
           '<div class="material-icon">' + (iconos[m.tipo] || ICONS.filePdf) + '</div>' +
-          '<div class="material-info"><div class="material-nombre">' + m.titulo + '</div>' +
+          '<div class="material-info"><div class="material-nombre">' + m.titulo + pillNuevo(kMat(curso, m)) + '</div>' +
           '<div class="material-desc">' + (m.desc || '') + '</div></div>' +
           '<a class="btn-descargar" href="' + m.url + '" target="_blank" rel="noopener"' + attrDescarga + '>' + textoBoton + '</a>' +
           '</div>';
@@ -1077,7 +1104,7 @@ function renderTareas() {
           ? '<a class="btn-descargar" href="' + t.url + '" target="_blank" rel="noopener" download>' + ICONS.download + '<span>Descargar</span></a>'
           : '';
         html += '<div class="aviso-item' + (entregado ? ' tarea-entregada' : '') + '"><div class="aviso-fecha">' + ICONS.calendar + ' Fecha de entrega: ' + t.fecha + '</div>' +
-          '<div class="aviso-titulo">' + t.titulo + '</div>' +
+          '<div class="aviso-titulo">' + t.titulo + pillNuevo(kTar(curso, t)) + '</div>' +
           (entregado ? '<div class="marca-entregado">' + ICONS.checkCircle + '<span>Entregado el ' + escHtml(entregado.fecha) +
             (entregado.envios > 1 ? ' · ' + entregado.envios + ' envíos' : '') + '</span></div>' : '') +
           '<div class="aviso-texto">' + (t.desc || '') + '</div>' +
@@ -1121,7 +1148,7 @@ function renderTrabajoGrupo() {
       for (const m of items) {
         html += '<div class="material-item">' +
           '<div class="material-icon">' + (iconos[m.tipo] || ICONS.filePdf) + '</div>' +
-          '<div class="material-info"><div class="material-nombre">' + m.titulo + '</div>' +
+          '<div class="material-info"><div class="material-nombre">' + m.titulo + pillNuevo(kGrp(curso, m)) + '</div>' +
           '<div class="material-desc">' + (m.desc || '') + '</div></div>' +
           '<a class="btn-descargar" href="' + m.url + '" target="_blank" rel="noopener" download>' + ICONS.download + '<span>Descargar</span></a>' +
           '</div>';
@@ -1149,8 +1176,9 @@ function tarjetaCurso(curso, n) {
       promHtml = '<span style="color:#aaa">Sin datos</span>';
       badgeHtml = '<span class="estado-badge pendiente-badge">En curso</span>';
     }
+    const kn = kNot(curso, n);
     return '<div class="curso-card">' +
-      '<div class="curso-titulo">' + ICONS.book + ' ' + curso + '</div>' +
+      '<div class="curso-titulo">' + ICONS.book + ' ' + curso + (kn ? pillNuevo(kn, 'Nota nueva') : '') + '</div>' +
       '<div class="notas-grid' + (sinTrabajo2 ? ' notas-grid-2' : '') + '">' +
         '<div class="nota-box"><div class="nota-label">Trabajo 1</div><div class="nota-valor">' + fmtNota(n.t1) + '</div></div>' +
         (sinTrabajo2 ? '' : '<div class="nota-box"><div class="nota-label">Trabajo 2</div><div class="nota-valor">' + fmtNota(n.t2) + '</div></div>') +
@@ -1225,7 +1253,7 @@ function renderObservaciones() {
   for (const curso of Object.keys(alumnoActual.cursos)) {
     for (const o of (observacionesCurso[curso] || [])) {
       html += '<div class="aviso-item"><div class="aviso-fecha">' + o.fecha + '</div>' +
-        '<div class="aviso-titulo">' + ICONS.book + ' ' + curso + '</div>' +
+        '<div class="aviso-titulo">' + ICONS.book + ' ' + curso + pillNuevo(kObc(curso, o)) + '</div>' +
         '<div class="aviso-texto">' + o.texto + '</div></div>';
     }
   }
@@ -1234,7 +1262,7 @@ function renderObservaciones() {
     return;
   }
   for (const o of registros) {
-    html += '<div class="aviso-item"><div class="aviso-fecha">' + o.fecha + '</div>' +
+    html += '<div class="aviso-item"><div class="aviso-fecha">' + o.fecha + pillNuevo(kObp(o)) + '</div>' +
       (o.curso ? '<div class="aviso-titulo">' + ICONS.book + ' ' + escHtml(o.curso) + '</div>' : '') +
       '<div class="aviso-texto">' + o.texto + '</div></div>';
   }
@@ -1251,10 +1279,123 @@ function renderAvisos() {
   let html = '';
   for (const a of avisosAlumno) {
     html += '<div class="aviso-item"><div class="aviso-fecha">' + a.fecha + '</div>' +
-      '<div class="aviso-titulo">' + a.titulo + '</div>' +
+      '<div class="aviso-titulo">' + a.titulo + pillNuevo(kAvi(a)) + '</div>' +
       '<div class="aviso-texto">' + a.texto + '</div></div>';
   }
   cont.innerHTML = html;
+}
+
+/* =====================================================================
+   NOVEDADES DESDE LA ÚLTIMA VISITA
+   El portal recuerda, en este dispositivo y por alumno, qué materiales,
+   tareas, trabajos en grupo, notas, observaciones y avisos ya vio. Lo que
+   aparezca después se marca "Nuevo", se cuenta en el menú y se resume
+   arriba. Al abrir una sección, su contador se apaga (la marca "Nuevo"
+   queda visible hasta la próxima vez que entre).
+   La primera vez en un dispositivo no se marca nada: se toma como punto
+   de partida lo que ya está publicado.
+   ===================================================================== */
+const SECCION_NOVEDAD = { mat: 'materiales', tar: 'tareas', grp: 'trabajogrupo', not: 'notas', obc: 'observaciones', obp: 'observaciones', avi: 'avisos' };
+const NOMBRE_SECCION = { materiales: 'Materias y Materiales', tareas: 'Tareas a Realizar', trabajogrupo: 'Trabajo en Grupo', notas: 'Mis Calificaciones', observaciones: 'Observaciones', avisos: 'Avisos Generales' };
+let nuevosSesion = new Set();   // lo que era nuevo al entrar (para las marcas "Nuevo")
+let vistosAlumno = null;        // lo que el alumno ya vio (se guarda en este dispositivo)
+let clavesActuales = [];
+
+function huella(t) {
+  let h = 5381;
+  for (const c of claveTexto(t)) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0;
+  return h.toString(36);
+}
+const cortoTexto = t => String(t || '').slice(0, 160);
+function kMat(curso, m) { return 'mat:' + huella([curso, m.titulo, m.url].join('|')); }
+function kTar(curso, t) { return 'tar:' + huella([curso, t.titulo, t.fecha, t.url].join('|')); }
+function kGrp(curso, m) { return 'grp:' + huella([curso, m.titulo, m.url].join('|')); }
+function kNot(curso, n) {
+  const v = [n.t1, n.t2, n.ex, n.notaFinal];
+  return v.some(x => x !== null && x !== undefined) ? 'not:' + huella(curso + '|' + v.join(',')) : null;
+}
+function kObc(curso, o) { return 'obc:' + huella([curso, o.fecha, cortoTexto(o.texto)].join('|')); }
+function kObp(o) { return 'obp:' + huella([o.curso, o.fecha, cortoTexto(o.texto)].join('|')); }
+function kAvi(a) { return 'avi:' + huella([a.curso, a.fecha, a.titulo, cortoTexto(a.texto)].join('|')); }
+
+function pillNuevo(k, texto) { return nuevosSesion.has(k) ? '<span class="pill-nuevo">' + (texto || 'Nuevo') + '</span>' : ''; }
+
+/* Todas las claves de lo que hoy ve el alumno, con la misma lógica de cada sección. */
+function recolectarClaves() {
+  const out = [];
+  if (sinCursos()) return out;
+  for (const curso of cursosActivos()) {
+    for (const m of (materiales[curso] || [])) out.push(kMat(curso, m));
+    for (const t of (tareas[curso] || [])) out.push(kTar(curso, t));
+    for (const m of (trabajoGrupo[curso] || [])) out.push(kGrp(curso, m));
+  }
+  for (const [curso, n] of Object.entries(alumnoActual.cursos)) { const k = kNot(curso, n || {}); if (k) out.push(k); }
+  for (const curso of Object.keys(alumnoActual.cursos)) for (const o of (observacionesCurso[curso] || [])) out.push(kObc(curso, o));
+  for (const o of (observaciones[alumnoActual.rut] || [])) out.push(kObp(o));
+  const cursos = Object.keys(alumnoActual.cursos);
+  for (const a of avisos.filter(a => !a.curso || cursos.includes(a.curso))) out.push(kAvi(a));
+  return out;
+}
+
+function prepararNovedades() {
+  nuevosSesion = new Set();
+  vistosAlumno = null;
+  clavesActuales = recolectarClaves();
+  let guardado = null;
+  try { guardado = JSON.parse(localStorage.getItem('vistos-' + alumnoActual.rut) || 'null'); } catch (e) { return; }
+  if (!Array.isArray(guardado)) {
+    vistosAlumno = new Set(clavesActuales); // primera vez en este dispositivo: nada se marca como nuevo
+    guardarVistos();
+    return;
+  }
+  vistosAlumno = new Set(guardado);
+  for (const k of clavesActuales) if (!vistosAlumno.has(k)) nuevosSesion.add(k);
+}
+
+function guardarVistos() {
+  if (!vistosAlumno) return;
+  // Solo se guardan claves que siguen publicadas, para que la lista no crezca sin fin.
+  const actuales = new Set(clavesActuales);
+  try { localStorage.setItem('vistos-' + alumnoActual.rut, JSON.stringify([...vistosAlumno].filter(k => actuales.has(k)))); } catch (e) { /* sin almacenamiento */ }
+}
+
+function pendientesPorSeccion() {
+  const n = {};
+  for (const k of nuevosSesion) {
+    if (vistosAlumno && vistosAlumno.has(k)) continue;
+    const sec = SECCION_NOVEDAD[k.split(':')[0]];
+    n[sec] = (n[sec] || 0) + 1;
+  }
+  return n;
+}
+
+function marcarSeccionVista(sec) {
+  if (!vistosAlumno) return;
+  let cambio = false;
+  for (const k of clavesActuales) {
+    if (SECCION_NOVEDAD[k.split(':')[0]] === sec && !vistosAlumno.has(k)) { vistosAlumno.add(k); cambio = true; }
+  }
+  if (cambio) { guardarVistos(); actualizarNovedades(); }
+}
+
+function actualizarNovedades() {
+  const pend = pendientesPorSeccion();
+  for (const sec of Object.keys(NOMBRE_SECCION)) {
+    const btn = document.getElementById('tab-' + sec);
+    if (!btn) continue;
+    let b = btn.querySelector('.nav-badge');
+    if (pend[sec]) {
+      if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; btn.appendChild(b); }
+      b.textContent = pend[sec];
+      b.title = pend[sec] === 1 ? '1 novedad' : pend[sec] + ' novedades';
+      btn.title = NOMBRE_SECCION[sec] + ' · ' + b.title;
+    } else if (b) { b.remove(); btn.title = NOMBRE_SECCION[sec]; }
+  }
+  const aviso = document.getElementById('novedades-aviso');
+  const secs = Object.keys(NOMBRE_SECCION).filter(sec => pend[sec]);
+  aviso.classList.toggle('visible', secs.length > 0);
+  aviso.innerHTML = secs.length ? ICONS.megaphone.replace('<svg', '<svg width="16" height="16"') + '<strong>Hay información nueva desde tu última visita:</strong> ' +
+    secs.map(sec => '<button type="button" onclick="mostrarSeccion(\'' + sec + '\')">' + NOMBRE_SECCION[sec] + ' (' + pend[sec] + ')</button>').join('') : '';
 }
 
 function renderHorario() {
