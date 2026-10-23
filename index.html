@@ -208,6 +208,12 @@ button:disabled { cursor: default; transform: none !important; }
 }
 .profe-toolbar a.btn-descargar span svg, .profe-toolbar a.btn-descargar svg { width: 14px; height: 14px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.profe-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 10px; margin: 4px 0 14px; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+button.profe-tab { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; background: var(--surface); color: var(--ink-500); border: 1px solid var(--border); box-shadow: none; padding: 8px 14px; border-radius: 99px; font-size: 0.84rem; font-weight: 700; }
+button.profe-tab svg { width: 15px; height: 15px; }
+button.profe-tab:hover { background: var(--blue-50); color: var(--blue-600); border-color: var(--blue-400); transform: none; box-shadow: none; }
+button.profe-tab.active { background: var(--blue-100); color: var(--blue-700); border-color: var(--blue-400); }
+.profe-tab-panel[hidden] { display: none; }
 .kpi { background: var(--surface-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
 .kpi-label { font-size: 0.72rem; color: var(--ink-500); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .kpi-valor { font-size: 1.55rem; font-weight: 800; color: var(--ink-900); margin-top: 4px; font-variant-numeric: tabular-nums; }
@@ -1743,7 +1749,9 @@ function renderPanelProfesor() {
   const pcts = activos.map(a => pctAsistencia((asistencia[a.rut] || {})[curso])).filter(p => p !== null);
   const promAsis = pcts.length ? Math.round(pcts.reduce((x, y) => x + y, 0) / pcts.length) : null;
 
-  let html;
+  // Cada bloque se arma en su propia pestaña (sec); los indicadores van arriba (kpis).
+  let html = '', kpis = '';
+  const sec = {};
   if (finalizado) {
     // Curso finalizado: notas finales y archivos del curso (solo lectura)
     const conNota = activos.filter(a => a.notas && a.notas.notaFinal !== null && a.notas.notaFinal !== undefined);
@@ -1756,10 +1764,11 @@ function renderPanelProfesor() {
       '<div class="kpi"><div class="kpi-label">Promedio final</div><div class="kpi-valor">' + (prom === null ? '—' : prom) + '</div><div class="kpi-sub">escala 0 – 100</div></div>' +
       '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
       '</div>';
-    html += htmlNotasCurso(matriculados, true);
-    html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Archivos del curso</div><div id="profe-archivos"><p class="sin-materiales">Cargando archivos…</p></div>' +
+    kpis = html; html = '';
+    sec.notas = htmlNotasCurso(matriculados, true);
+    sec.archivos = '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Archivos del curso</div><div id="profe-archivos"><p class="sin-materiales">Cargando archivos…</p></div>' +
       '<p class="profe-nota">Archivos guardados en el portal para este curso. Los alumnos ya no los ven, porque el curso está finalizado.</p></div>';
-    html += htmlObservacionesCurso(curso, matriculados);
+    sec.avisos = htmlObservacionesCurso(curso, matriculados);
   } else {
     html = '<div class="kpi-grid">' +
       '<div class="kpi"><div class="kpi-label">Alumnos</div><div class="kpi-valor">' + activos.length + '</div><div class="kpi-sub">' + (matriculados.length - activos.length ? (matriculados.length - activos.length) + ' bloqueado(s)' : 'con acceso') + '</div></div>' +
@@ -1767,6 +1776,7 @@ function renderPanelProfesor() {
       '<div class="kpi"><div class="kpi-label">Asistencia promedio</div><div class="kpi-valor">' + (promAsis === null ? '—' : promAsis + '%') + '</div><div class="kpi-sub">' + pcts.length + ' con registros</div></div>' +
       '<div class="kpi"><div class="kpi-label">Entregas recibidas</div><div class="kpi-valor">' + entregas.length + '</div><div class="kpi-sub">en este curso</div></div>' +
       '</div>';
+    kpis = html; html = '';
 
     // Materiales publicados (lo mismo que ve el alumno)
     html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.book + ' Materiales publicados</div>';
@@ -1792,11 +1802,10 @@ function renderPanelProfesor() {
     const h = horarios[curso];
     if (h) html += '<p class="profe-nota">Horario: ' + escHtml(h.dia) + ' · ' + escHtml(h.hora) + ' · ' + escHtml(h.modalidad) + ' · ' + escHtml(h.lugar) + '</p>';
     html += '</div>';
-
-
+    sec.materiales = html; html = '';
   }
 
-  if (!finalizado) html += htmlObservacionesCurso(curso, matriculados);
+  if (!finalizado) sec.avisos = htmlObservacionesCurso(curso, matriculados);
 
   // Entregas por trabajo
   if (!finalizado || entregas.length) {
@@ -1827,10 +1836,12 @@ function renderPanelProfesor() {
   }
   html += '</div>';
   }
+  if (html) sec.entregas = html;
+  html = '';
 
   // Notas y tabla de alumnos (ingresos y asistencia) — solo cursos en curso
   if (!finalizado) {
-  html += htmlNotasCurso(matriculados, false);
+  sec.notas = htmlNotasCurso(matriculados, false);
   html += '<div class="curso-card"><div class="curso-titulo">' + ICONS.users + ' Alumnos del curso</div><div class="tabla-wrap"><table class="profe-tabla"><thead><tr>' +
     '<th>Alumno</th><th>Último ingreso</th><th class="num">Ingresos</th><th class="num">Asistencia</th><th class="num">Entregas</th></tr></thead><tbody>';
   for (const a of matriculados) {
@@ -1844,6 +1855,7 @@ function renderPanelProfesor() {
       '<td class="num">' + (i ? i.n : 0) + '</td><td class="num">' + tagAsis + '</td><td class="num">' + ne + '</td></tr>';
   }
   html += '</tbody></table></div><p class="profe-nota">Asistencia: Presente = 1, Media clase = 0,5. Bajo 75 % en rojo o naranjo. Los ingresos se registran desde que se activó el registro en Google Drive.</p></div>';
+  sec.alumnos = html; html = '';
   }
 
   // Asistencia: lista completa (alumnos × clases), tal como está en la planilla
@@ -1877,6 +1889,7 @@ function renderPanelProfesor() {
       '<p class="profe-nota">/ presente · % media clase · x ausente · A atraso · "·" sin registro. Si falta una clase o un alumno, revisa la pestaña "Asist." del curso en la planilla de datos.</p>';
   }
   html += '</div>';
+  sec.asistencia = html; html = '';
 
   // Últimos ingresos (todos los cursos)
   const ult = [...profeDatos.ingresos].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 15);
@@ -1884,8 +1897,33 @@ function renderPanelProfesor() {
   html += ult.length ? ult.map(i => '<div class="entrega-linea"><span>' + escHtml(i.alumno) + '</span><span class="cuando">' + fechaCorta(i.fecha) + '</span></div>').join('')
     : '<p class="sin-materiales">Aún no hay ingresos registrados.</p>';
   html += '</div>';
-  cont.innerHTML = html;
+  if (!finalizado) sec.alumnos = (sec.alumnos || '') + html;
+
+  const pestanas = (finalizado
+    ? [['notas', 'Notas finales', ICONS.chart], ['asistencia', 'Asistencia', ICONS.calendarCheck], ['entregas', 'Entregas', ICONS.upload],
+       ['archivos', 'Archivos', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone]]
+    : [['entregas', 'Entregas', ICONS.upload], ['notas', 'Notas', ICONS.chart], ['asistencia', 'Asistencia', ICONS.calendarCheck],
+       ['alumnos', 'Alumnos', ICONS.users], ['materiales', 'Materiales', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone]]
+  ).filter(([k]) => sec[k]);
+  if (!pestanas.some(([k]) => k === profeTab)) profeTab = pestanas.length ? pestanas[0][0] : null;
+  cont.innerHTML = kpis +
+    '<div class="profe-tabs" role="tablist">' + pestanas.map(([k, nombre, ico]) =>
+      '<button type="button" role="tab" class="profe-tab' + (k === profeTab ? ' active' : '') + '" data-tab="' + k + '" aria-selected="' + (k === profeTab) + '" onclick="cambiarTabProfe(\'' + k + '\')">' +
+      ico + '<span>' + nombre + '</span></button>').join('') + '</div>' +
+    pestanas.map(([k]) => '<div class="profe-tab-panel" role="tabpanel" data-tab="' + k + '"' + (k === profeTab ? '' : ' hidden') + '>' + sec[k] + '</div>').join('');
   if (finalizado) cargarArchivosCurso(curso);
+}
+
+/* Pestañas del panel: se recuerda la elegida al cambiar de curso o actualizar. */
+let profeTab = 'entregas';
+function cambiarTabProfe(k) {
+  profeTab = k;
+  for (const b of document.querySelectorAll('#profe-contenido .profe-tab')) {
+    const on = b.dataset.tab === k;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on);
+  }
+  for (const pnl of document.querySelectorAll('#profe-contenido .profe-tab-panel')) pnl.hidden = pnl.dataset.tab !== k;
 }
 
 /* ---------- Último ingreso (se registra en Google Drive vía ENTREGAS_URL) ---------- */
