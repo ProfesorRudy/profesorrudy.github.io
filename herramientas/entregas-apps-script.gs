@@ -338,9 +338,15 @@ function leerDatos() {
   datos.horarios = {};
   for (const f of tabla('Horarios')) if (f[0]) datos.horarios[f[0]] = { dia: f[1], hora: f[2], modalidad: f[3], lugar: f[4] };
   datos.observacionesCurso = porCurso(tabla('Obs. por curso'), f => ({ fecha: fechaTexto(f[1]), texto: f[2] }));
+  // Columna opcional con encabezado "Curso": la observación se muestra solo en ese curso.
+  const hojaObs = libro.getSheetByName('Obs. por alumno');
+  const colCurso = hojaObs && hojaObs.getLastColumn() ? hojaObs.getRange(1, 1, 1, hojaObs.getLastColumn()).getDisplayValues()[0]
+    .findIndex(h => /^\s*curso/i.test(String(h))) : -1;
   for (const f of tabla('Obs. por alumno')) {
     if (!f[0]) continue;
-    (datos.observaciones[normRut(f[0])] = datos.observaciones[normRut(f[0])] || []).push({ fecha: fechaTexto(f[2]), texto: f[3] });
+    const o = { fecha: fechaTexto(f[2]), texto: f[3] };
+    if (colCurso > -1 && f[colCurso]) o.curso = f[colCurso];
+    (datos.observaciones[normRut(f[0])] = datos.observaciones[normRut(f[0])] || []).push(o);
   }
   datos.avisos = tabla('Avisos').filter(f => f[3] || f[2]).map(f => ({ fecha: fechaTexto(f[0]), curso: f[1], titulo: f[2], texto: f[3] }));
 

@@ -1234,7 +1234,9 @@ function renderObservaciones() {
     return;
   }
   for (const o of registros) {
-    html += '<div class="aviso-item"><div class="aviso-fecha">' + o.fecha + '</div><div class="aviso-texto">' + o.texto + '</div></div>';
+    html += '<div class="aviso-item"><div class="aviso-fecha">' + o.fecha + '</div>' +
+      (o.curso ? '<div class="aviso-titulo">' + ICONS.book + ' ' + escHtml(o.curso) + '</div>' : '') +
+      '<div class="aviso-texto">' + o.texto + '</div></div>';
   }
   cont.innerHTML = html;
 }
@@ -1631,14 +1633,22 @@ function htmlObservacionesCurso(curso, matriculados) {
     (extra ? '<strong>' + escHtml(extra) + ':</strong> ' : '') + escHtml(texto || '') + '</div>';
   const delCurso = profeObs.curso[curso] || [];
   const avisos = profeObs.avisos.filter(a => !a.curso || a.curso === curso);
-  const personales = [];
-  for (const a of matriculados) for (const o of (profeObs.alumno[norm(a.rut)] || [])) personales.push([a.nombre, o]);
+  // Observaciones personales: solo las de este curso. Las que no indican curso en la
+  // planilla se muestran aparte, porque el alumno las ve sin importar el curso.
+  const personales = [], sinCurso = [];
+  for (const a of matriculados) for (const o of (profeObs.alumno[norm(a.rut)] || [])) {
+    if (!o.curso) sinCurso.push([a.nombre, o]);
+    else if (claveTexto(o.curso) === claveTexto(curso)) personales.push([a.nombre, o]);
+  }
   html += '<div class="mat-grupo">Observaciones del curso (' + delCurso.length + ') · las ven todos los alumnos del curso</div>' +
     (delCurso.length ? delCurso.map(o => linea(o.fecha, o.texto)).join('') : '<p class="sin-materiales">No hay observaciones para este curso.</p>');
   html += '<div class="mat-grupo">Avisos (' + avisos.length + ')</div>' +
     (avisos.length ? avisos.map(a => linea(a.fecha, (a.titulo ? a.titulo + ' — ' : '') + a.texto, a.curso ? '' : 'Para todos')).join('') : '<p class="sin-materiales">No hay avisos para este curso.</p>');
   html += '<div class="mat-grupo">Observaciones personales (' + personales.length + ') · cada una la ve solo su alumno</div>' +
     (personales.length ? personales.map(([n, o]) => linea(o.fecha, o.texto, n)).join('') : '<p class="sin-materiales">No hay observaciones personales para alumnos de este curso.</p>');
+  if (sinCurso.length) html += '<div class="mat-grupo">Observaciones personales sin curso indicado (' + sinCurso.length + ')</div>' +
+    sinCurso.map(([n, o]) => linea(o.fecha, o.texto, n)).join('') +
+    '<p class="profe-nota">Estas observaciones no dicen a qué curso pertenecen, por eso aparecen en todos los cursos del alumno. Escribe el curso en la columna "Curso" de la pestaña "Obs. por alumno" para que se vean solo en el suyo.</p>';
   return html + '<p class="profe-nota">Se editan en las pestañas "Obs. por curso", "Obs. por alumno" y "Avisos" de la planilla de datos.</p></div>';
 }
 
