@@ -2050,11 +2050,26 @@ function renderPanelProfesor() {
   html += '</div>';
   if (!finalizado) sec.alumnos = (sec.alumnos || '') + html;
 
+  // Mensajes de alumnos enviados desde el portal (de este curso y consultas generales)
+  let nMensajes = 0;
+  if (!profeDatos.mensajes) {
+    sec.mensajes = '<div class="curso-card"><div class="curso-titulo">' + ICONS.send + ' Mensajes de alumnos</div><p class="sin-materiales">Actualiza el script de Google (Nueva versión) para recibir mensajes de los alumnos en el panel.</p></div>';
+  } else {
+    const msgs = profeDatos.mensajes.filter(m => m.curso === curso || !m.curso).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    nMensajes = msgs.length;
+    sec.mensajes = '<div class="curso-card"><div class="curso-titulo">' + ICONS.send + ' Mensajes de alumnos</div>' +
+      (msgs.length ? msgs.map(m => '<div class="entrega-linea" style="display:block;"><div style="display:flex;gap:8px;align-items:baseline;"><strong>' + escHtml(m.alumno) + '</strong>' +
+        '<span class="tag ' + (m.curso ? 'gris' : 'medio') + '">' + escHtml(m.curso || 'Consulta general') + '</span><span class="cuando">' + fechaCorta(m.fecha) + '</span></div>' +
+        '<div style="margin-top:3px;white-space:pre-wrap;">' + escHtml(m.texto) + '</div></div>').join('')
+        : '<p class="sin-materiales">Aún no hay mensajes de alumnos de este curso.</p>') +
+      '<p class="profe-nota">Se muestran los mensajes de este curso y las consultas generales. Todos quedan guardados en la hoja "Mensajes" del Registro de entregas. Para responder, usa WhatsApp o correo.</p></div>';
+  }
+
   const pestanas = (finalizado
     ? [['notas', 'Notas finales', ICONS.chart], ['asistencia', 'Asistencia', ICONS.calendarCheck], ['entregas', 'Entregas', ICONS.upload],
-       ['archivos', 'Archivos', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone]]
+       ['archivos', 'Archivos', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone], ['mensajes', 'Mensajes' + (nMensajes ? ' (' + nMensajes + ')' : ''), ICONS.send]]
     : [['entregas', 'Entregas', ICONS.upload], ['notas', 'Notas', ICONS.chart], ['asistencia', 'Asistencia', ICONS.calendarCheck],
-       ['alumnos', 'Alumnos', ICONS.users], ['materiales', 'Materiales', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone]]
+       ['alumnos', 'Alumnos', ICONS.users], ['materiales', 'Materiales', ICONS.book], ['avisos', 'Avisos', ICONS.megaphone], ['mensajes', 'Mensajes' + (nMensajes ? ' (' + nMensajes + ')' : ''), ICONS.send]]
   ).filter(([k]) => sec[k]);
   if (!pestanas.some(([k]) => k === profeTab)) profeTab = pestanas.length ? pestanas[0][0] : null;
   cont.innerHTML = kpis +
@@ -2209,9 +2224,10 @@ function renderProfesor() {
   }
   html += '<label for="msg-texto">Mensaje</label><textarea id="msg-texto" placeholder="Escribe aquí tu consulta…"></textarea>' +
     '<p class="mensaje-error" id="msg-error">Escribe tu mensaje antes de enviarlo.</p><div class="mensaje-botones">';
+  if (ENTREGAS_URL) html += '<button type="button" id="btn-msg-portal" onclick="enviarMensaje(\'portal\')">' + ICONS.send + '<span>Enviar por el portal</span></button>';
   if (wsp) html += '<button type="button" class="btn-wsp" onclick="enviarMensaje(\'wsp\')">' + ICONS.whatsapp + '<span>Enviar por WhatsApp</span></button>';
   if (profesor.correo) html += '<button type="button" onclick="enviarMensaje(\'correo\')">' + ICONS.mail + '<span>Enviar por correo</span></button>';
-  html += '</div><p class="mensaje-nota">Se abrirá WhatsApp o tu aplicación de correo con el mensaje ya escrito, incluyendo tu nombre y RUT. Solo debes confirmar el envío.</p></div>';
+  html += '</div><div class="entrega-msg" id="msg-estado"></div><p class="mensaje-nota">"Enviar por el portal" deja tu mensaje directamente al profesor. Con WhatsApp o correo se abrirá la aplicación con el mensaje ya escrito, incluyendo tu nombre y RUT; solo debes confirmar el envío.</p></div>';
   cont.innerHTML = html;
 }
 
@@ -2222,6 +2238,7 @@ function enviarMensaje(via) {
   err.style.display = 'none';
   const sel = document.getElementById('msg-curso');
   const curso = sel && sel.value ? sel.value : '';
+  if (via === 'portal') { enviarMensajePortal(curso, texto); return; }
   const cuerpo = 'Hola profesor, soy ' + alumnoActual.nombre + ' (RUT ' + alumnoActual.rut + ').' +
     (curso ? '\nCurso: ' + curso : '') + '\n\n' + texto;
   if (via === 'wsp') {
@@ -2229,6 +2246,28 @@ function enviarMensaje(via) {
   } else {
     const asunto = 'Consulta portal' + (curso ? ' · ' + curso : '') + ' · ' + alumnoActual.nombre;
     window.location.href = 'mailto:' + profesor.correo + '?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+  }
+}
+
+/* Mensaje al profesor guardado en la planilla (hoja "Mensajes"); lo lee en su panel. */
+async function enviarMensajePortal(curso, texto) {
+  const btn = document.getElementById('btn-msg-portal');
+  const estado = document.getElementById('msg-estado');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'Enviando…';
+  try {
+    const r = await (await fetch(ENTREGAS_URL, { method: 'POST', body: JSON.stringify({
+      accion: 'mensaje', rut: alumnoActual.rut, clave: claveAlumno, curso: curso, texto: texto }) })).json();
+    if (!r.ok) throw new Error(r.mensaje || 'No se pudo enviar.');
+    estado.className = 'entrega-msg ok';
+    estado.innerHTML = '<strong>✓ Mensaje enviado.</strong> El profesor lo verá en su panel.';
+    document.getElementById('msg-texto').value = '';
+  } catch (err) {
+    estado.className = 'entrega-msg error';
+    estado.innerHTML = 'No se pudo enviar el mensaje: ' + escHtml(err.message) + '. Puedes enviarlo por WhatsApp o correo.';
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'Enviar por el portal';
   }
 }
 

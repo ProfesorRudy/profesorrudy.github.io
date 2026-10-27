@@ -52,6 +52,7 @@ function doPost(e) {
     if (d.accion === 'ingreso') return registrarIngreso(d);
     if (d.accion === 'panel') return datosPanel(d);
     if (d.accion === 'datos') return datosAlumno(d);
+    if (d.accion === 'mensaje') return guardarMensaje(d);
     if (d.accion === 'misEntregas') return misEntregas(d);
     if (d.accion === 'descargarEntrega') return descargarEntrega(d);
     const rut = String(d.rut || '').trim();
@@ -198,6 +199,30 @@ function registrarIngreso(d) {
   }
 }
 
+/* Mensaje de un alumno al profesor desde el portal: se guarda en la hoja "Mensajes". */
+function guardarMensaje(d) {
+  const rut = String(d.rut || '').trim();
+  const texto = String(d.texto || '').trim().slice(0, 2000);
+  if (!rut || !texto) return responder(false, 'Escribe tu mensaje antes de enviarlo.');
+  const alumno = buscarAlumno(rut, null, d.clave);
+  if (!alumno) return responder(false, 'RUT no habilitado en el portal.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const libro = registro().getParent();
+    let hoja = libro.getSheetByName('Mensajes');
+    if (!hoja) {
+      hoja = libro.insertSheet('Mensajes');
+      hoja.appendRow(['Fecha', 'Alumno', 'RUT', 'Curso', 'Mensaje']);
+      hoja.setFrozenRows(1);
+    }
+    hoja.appendRow([new Date(), alumno, rut, String(d.curso || '').slice(0, 120), texto]);
+    return responder(true, 'Mensaje enviado.');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /* Panel del profesor: devuelve los registros de entregas e ingresos si la clave es correcta. */
 function datosPanel(d) {
   const clave = PropertiesService.getScriptProperties().getProperty('CLAVE_PROFESOR');
@@ -216,7 +241,8 @@ function datosPanel(d) {
     fecha: iso(f[0]), alumno: f[1], rut: f[2], curso: f[3], trabajo: f[4], archivo: f[5], comentario: f[6], enlace: f[7]
   }));
   const ingresos = filas(libro.getSheetByName('Ingresos')).map(f => ({ fecha: iso(f[0]), alumno: f[1], rut: f[2] }));
-  const extra = { entregas: entregas, ingresos: ingresos, planilla: libro.getUrl() };
+  const mensajes = filas(libro.getSheetByName('Mensajes')).map(f => ({ fecha: iso(f[0]), alumno: f[1], rut: f[2], curso: f[3], texto: f[4] }));
+  const extra = { entregas: entregas, ingresos: ingresos, mensajes: mensajes, planilla: libro.getUrl() };
   const datos = leerDatos();
   if (datos) {
     // Con planilla de datos, el portal ya no trae alumnos ni asistencia en su código.
