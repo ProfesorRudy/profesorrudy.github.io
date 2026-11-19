@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Examen Filosofía Antigua y Medieval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   CONFIGURACIÓN — lo único que el profesor necesita cambiar arriba
+   está en el bloque <script> al final (CONFIG y PREGUNTAS).
+   ================================================================ */
+:root{
+  --bg:#F6F1E7; --bg2:#EDE4D3; --card:#FFFDF8; --ink:#1F2A36; --muted:#5C6773;
+  --acc:#A24A22; --acc2:#2E6F8E; --line:#D9CDB6; --ok:#2E7D4F; --warn:#B7791F; --bad:#B23B3B;
+  --dark:#1F2A36;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151C24; --bg2:#1C2530; --card:#212B37; --ink:#EEE7DA; --muted:#A9B3BE;
+    --acc:#E3A27F; --acc2:#8CC3DA; --line:#33404F; --ok:#6CC08F; --warn:#E2B356; --bad:#E57D7D;
+    --dark:#0E141A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151C24; --bg2:#1C2530; --card:#212B37; --ink:#EEE7DA; --muted:#A9B3BE;
+  --acc:#E3A27F; --acc2:#8CC3DA; --line:#33404F; --ok:#6CC08F; --warn:#E2B356; --bad:#E57D7D;
+  --dark:#0E141A;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Nunito Sans',Arial,sans-serif;font-size:17px;line-height:1.55;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+textarea,input{-webkit-user-select:text;user-select:text}
+h1,h2,h3{font-family:'EB Garamond',Georgia,serif;font-weight:600;line-height:1.15;margin:0}
+.wrap{max-width:820px;margin:0 auto;padding:24px 16px 120px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:20px}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--acc)}
+.muted{color:var(--muted)}
+label{display:block;font-weight:700;margin:14px 0 6px}
+input[type=text]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--bg);color:var(--ink)}
+input[type=text]:focus,textarea:focus{outline:2px solid var(--acc2);outline-offset:1px}
+.err{color:var(--bad);font-size:15px;min-height:22px;margin-top:6px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 22px;cursor:pointer;background:var(--acc);color:#fff}
+button.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:not-allowed}
+ul.rules{padding-left:20px;margin:10px 0}
+ul.rules li{margin:4px 0}
+.hidden{display:none!important}
+
+/* Barra superior durante el examen */
+.bar{position:sticky;top:0;z-index:20;background:var(--dark);color:#F6F1E7;display:flex;align-items:center;gap:12px;
+  padding:10px 16px;flex-wrap:wrap}
+.bar .who{flex:1;min-width:160px;font-size:14px;opacity:.9}
+.timer{font-family:'EB Garamond',Georgia,serif;font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.timer.warn{color:#E2B356}.timer.crit{color:#FF8A8A}
+.prog{font-size:14px;opacity:.85}
+.alert{position:sticky;top:58px;z-index:19;background:var(--bad);color:#fff;padding:10px 16px;font-weight:700;text-align:center}
+
+/* Preguntas */
+.q{position:relative;overflow:hidden}
+.q .num{font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc2)}
+.q .pts{float:right;font-size:13px;color:var(--muted);font-weight:700}
+.q .stem{white-space:pre-line;font-size:18px;margin:8px 0 14px;position:relative;z-index:1}
+.opt{font-weight:400;display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin:8px 0;cursor:pointer;position:relative;z-index:1;background:var(--card)}
+.opt:hover{border-color:var(--acc2)}
+.opt input{margin-top:5px;accent-color:var(--acc)}
+.opt.sel{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,var(--card))}
+textarea{width:100%;min-height:150px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;
+  background:var(--bg);color:var(--ink);resize:vertical;position:relative;z-index:1}
+.wc{font-size:13px;color:var(--muted);text-align:right;margin-top:4px}
+.wc.low{color:var(--warn)}
+.wm{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.07;font-size:15px;font-weight:700;color:var(--ink);
+  transform:rotate(-18deg) scale(1.4);display:flex;flex-wrap:wrap;gap:30px 60px;align-content:center;justify-content:center;white-space:nowrap}
+.submit-zone{text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--card);color:var(--ink);
+  font-weight:700;font-size:15px;padding:0;display:flex;align-items:center;justify-content:center}
+.chip.resp{background:var(--acc2);border-color:var(--acc2);color:#fff}
+.chip.act{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 30%,transparent)}
+.chip:disabled{opacity:.45}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:12px;position:sticky;bottom:0;z-index:15;
+  background:var(--bg);padding:12px 0 14px;border-top:1px solid var(--line)}
+/* examen más ancho y compacto */
+#scrExam .wrap{max-width:1180px;padding:14px 20px 40px}
+#scrExam .card{margin-top:12px;padding:20px 26px}
+#scrExam #chipsBox{padding:10px 16px}
+#scrExam .chip{width:36px;height:36px;font-size:14px}
+#scrExam .q .stem{font-size:19px}
+#scrExam textarea{min-height:200px}
+@media (max-width:520px){ #scrExam .wrap{padding:10px 12px 30px} #scrExam .card{padding:16px} }
+.nav button{min-width:130px}
+.done h2{color:var(--ok)}
+table.sum{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+table.sum td{border-bottom:1px solid var(--line);padding:6px 4px;vertical-align:top}
+table.sum td:first-child{font-weight:700;width:38%}
+.demo{background:var(--warn);color:#1F2A36;font-weight:700;font-size:14px;text-align:center;padding:6px 12px}
+
+@media print{ body *{visibility:hidden!important} body::after{content:"Impresión deshabilitada.";visibility:visible} }
+@media (max-width:520px){ .timer{font-size:24px} .card{padding:18px} }
+</style>
+</head>
+<body oncontextmenu="return false">
+
+<div id="demoBanner" class="demo hidden">MODO DEMOSTRACIÓN: las respuestas no se guardan en la planilla (falta conectar la URL de Google).</div>
+
+<!-- ===================== PANTALLA 1: INGRESO ===================== -->
+<div id="scrLogin" class="wrap">
+  <p class="eyebrow">Instituto Bíblico Concepción</p>
+  <h1 id="tituloExamen" style="font-size:40px;margin-top:6px"></h1>
+  <p class="muted" id="subtituloExamen"></p>
+
+  <div class="card">
+    <h2 style="font-size:26px">Identificación</h2>
+    <label for="nombre">Nombre completo</label>
+    <input id="nombre" type="text" autocomplete="off" maxlength="80" placeholder="Ej.: María José González Pérez">
+    <label for="rut">RUT</label>
+    <input id="rut" type="text" autocomplete="off" maxlength="12" placeholder="Ej.: 12.345.678-5">
+    <div id="loginErr" class="err"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:26px">Antes de comenzar, lea con atención</h2>
+    <ul class="rules" id="reglas"></ul>
+    <label style="font-weight:600;display:flex;gap:10px;align-items:flex-start;cursor:pointer">
+      <input type="checkbox" id="acepto" style="margin-top:6px"> Leí las instrucciones y me comprometo a responder de manera honesta y personal.
+    </label>
+    <div style="margin-top:18px"><button id="btnComenzar">Comenzar examen</button></div>
+    <div id="boxCodigo" class="hidden" style="margin-top:18px;padding:18px;border:2px solid var(--acc);border-radius:12px;background:var(--bg)">
+      <p style="margin:0 0 6px"><b>Usted ya había comenzado este examen.</b><br>Para continuar, solicite al profesor su código de reingreso. El tiempo sigue corriendo.</p>
+      <label for="codigo">Código de reingreso</label>
+      <input id="codigo" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="_ _ _ _" style="max-width:160px;font-size:22px;letter-spacing:6px;text-align:center">
+      <div id="codigoErr" class="err"></div>
+      <button id="btnContinuar">Continuar examen</button>
+      <p id="codigoDemo" class="muted hidden" style="font-size:14px;margin:10px 0 0">Modo demostración: el código es <b>1234</b>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PANTALLA 2: EXAMEN ===================== -->
+<div id="scrExam" class="hidden">
+  <div class="bar">
+    <div class="who" id="who"></div>
+    <div class="prog" id="prog"></div>
+    <div class="timer" id="timer">--:--</div>
+  </div>
+  <div id="alerta" class="alert hidden"></div>
+  <div class="wrap">
+    <div id="chipsBox" class="card hidden" style="padding:14px 18px">
+      <div class="muted" style="font-size:14px">Preguntas (en azul las respondidas):</div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div id="preguntas"></div>
+    <div class="nav hidden" id="nav">
+      <button class="sec" id="btnAnt">← Anterior</button>
+      <button id="btnSig">Siguiente →</button>
+    </div>
+    <div class="card submit-zone" id="zonaEntrega">
+      <p class="muted" id="faltan"></p>
+      <button id="btnEntregar">Entregar examen</button>
+      <div id="confirmBox" class="hidden" style="margin-top:14px">
+        <p><b>¿Está seguro de entregar?</b> Después no podrá modificar sus respuestas.</p>
+        <button id="btnSi">Sí, entregar</button> <button class="sec" id="btnNo">Volver al examen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PANTALLA 3: ENTREGADO / MENSAJES ===================== -->
+<div id="scrDone" class="wrap hidden">
+  <div class="card done">
+    <h2 id="doneTitle" style="font-size:32px"></h2>
+    <p id="doneMsg"></p>
+    <button id="btnReintentar" class="hidden">Reintentar envío</button>
+    <div id="doneDemo"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   1) CONFIGURACIÓN
+   ================================================================ */
+const CONFIG = {
+  titulo: "Examen Filosofía Antigua y Medieval",
+  subtitulo: "Prof. Rudy Fuentes · Teología, 1er año",
+  duracionMinutos: 60,
+  // Pegue aquí la URL de la "Aplicación web" de Google Apps Script.
+  // Si queda vacía, el examen funciona en MODO DEMOSTRACIÓN (no guarda nada).
+  urlGoogle: "https://script.google.com/macros/s/AKfycbzBk4UdeK768BTZao9Syo2NTRrnOHIBJZ2tlC9m6wFiPmpl1N8A7Z-CkkhvyqFmdApG/exec",
+  // 0 = solo registrar las salidas de la página. Un número (ej. 5) = al llegar a esa
+  // cantidad de salidas, el examen se entrega automáticamente.
+  limiteSalidas: 0,
+  mezclarPreguntas: true,
+  mezclarAlternativas: true,
+  // true = una pregunta por pantalla, con botones Anterior / Siguiente.
+  unaPorPantalla: true,
+  // true = el alumno puede volver a preguntas anteriores.
+  // false = versión más exigente: al avanzar, no puede regresar.
+  permitirVolver: true,
+  // false = el alumno NO ve avisos al intentar pegar, copiar o salir de la página
+  // (igual se bloquea y queda registrado en la planilla).
+  mostrarAvisosControl: false,
+  // Máximo de palabras en las respuestas de desarrollo (0 = sin límite).
+  maxPalabras: 160
+};
+
+/* ================================================================
+   2) PREGUNTAS (la pauta NO va aquí: está en la planilla de Google)
+   tipo: "alternativas" | "vf" (verdadero/falso; pideJustificacion:true para pedir justificación) | "desarrollo"
+   ================================================================ */
+// Las preguntas REALES están guardadas en la planilla de Google (Codigo.gs) y se reciben
+// solo cuando el alumno entra con su RUT. Estas dos son únicamente para el modo demostración.
+const PREGUNTAS_DEMO = [
+  { id:"d1", tipo:"alternativas", puntaje:2, texto:"(Pregunta de demostración) ¿Quién fue el maestro de Platón?",
+    opciones:{ a:"Aristóteles", b:"Sócrates", c:"Tales de Mileto", d:"San Agustín" } },
+  { id:"d2", tipo:"desarrollo", puntaje:4, minPalabras:40, texto:"(Pregunta de demostración) Explique con sus palabras qué es la filosofía." }
+];
+let PREGUNTAS = [];
+
+/* ================================================================
+   3) LÓGICA DEL EXAMEN (no es necesario modificar)
+   ================================================================ */
+const $ = s => document.querySelector(s);
+const DEMO = !CONFIG.urlGoogle;
+const st = { nombre:"", rut:"", inicio:0, respuestas:{}, salidas:0, intentosPegar:0, intentosCopiar:0,
+             insercionesSospechosas:0, capturas:0, orden:[], ordenOpc:{}, entregado:false, enviando:false };
+let tick=null, ultimaSalida=0;
+
+function guardarLocal(){ try{ localStorage.setItem("exam_"+st.rut, JSON.stringify(st)); }catch(e){} }
+function leerLocal(rut){ try{ return JSON.parse(localStorage.getItem("exam_"+rut)||"null"); }catch(e){ return null; } }
+
+/* --- RUT chileno --- */
+function limpiarRut(r){ return (r||"").replace(/[^0-9kK]/g,"").toUpperCase(); }
+function rutValido(r){
+  r=limpiarRut(r); if(r.length<8||r.length>9) return false;
+  const cuerpo=r.slice(0,-1), dv=r.slice(-1); let s=0,m=2;
+  for(let i=cuerpo.length-1;i>=0;i--){ s+=parseInt(cuerpo[i])*m; m=m===7?2:m+1; }
+  const res=11-(s%11), dvc= res===11?"0": res===10?"K": String(res);
+  return dv===dvc;
+}
+function formatoRut(r){ r=limpiarRut(r); const c=r.slice(0,-1), d=r.slice(-1);
+  return c.replace(/\B(?=(\d{3})+(?!\d))/g,".")+"-"+d; }
+
+/* --- Servidor (Google Apps Script) --- */
+async function servidorIniciar(codigo){
+  if(DEMO){ const prev=leerLocal(st.rut);
+    if(prev&&prev.entregado) return {estado:"entregado"};
+    if(prev&&prev.inicio){
+      if(codigo==="1234") return {estado:"continuar", inicio:prev.inicio};
+      return {estado:"requiereCodigo", incorrecto:!!codigo};
+    }
+    return {estado:"nuevo", inicio:Date.now()}; }
+  let url=CONFIG.urlGoogle+"?accion=iniciar&rut="+encodeURIComponent(st.rut)+"&nombre="+encodeURIComponent(st.nombre);
+  if(codigo) url+="&codigo="+encodeURIComponent(codigo);
+  const r=await fetch(url); return await r.json();
+}
+async function servidorEntregar(payload){
+  if(DEMO){ await new Promise(r=>setTimeout(r,500)); return {ok:true, demo:true}; }
+  const r=await fetch(CONFIG.urlGoogle,{method:"POST",body:JSON.stringify(payload)});
+  return await r.json();
+}
+
+/* --- Ingreso --- */
+$("#tituloExamen").textContent=CONFIG.titulo;
+$("#subtituloExamen").textContent=CONFIG.subtitulo+" · Duración: "+CONFIG.duracionMinutos+" minutos";
+if(DEMO) $("#demoBanner").classList.remove("hidden");
+const reglas=[
+  "Tiene <b>"+CONFIG.duracionMinutos+" minutos</b> para responder, tiempo suficiente para hacerlo con calma. Administre bien su tiempo: al terminar, el examen se entrega <b>automáticamente</b> con lo que haya respondido.",
+  "La prueba es <b>individual</b>: responda usted solo(a), con sus propias palabras.",
+  "Solo puede rendirla <b>una vez</b>. Si se cierra la página, para volver a entrar deberá pedir al profesor un <b>código de reingreso</b>. El tiempo <b>no se detiene</b>.",
+  "Sus respuestas se guardan en este dispositivo mientras escribe. Use siempre el mismo dispositivo."
+];
+$("#reglas").innerHTML=reglas.map(x=>"<li>"+x+"</li>").join("");
+
+$("#rut").addEventListener("blur",()=>{ if(rutValido($("#rut").value)) $("#rut").value=formatoRut($("#rut").value); });
+function datosIngreso(){
+  const nombre=$("#nombre").value.trim().replace(/\s+/g," "), rut=$("#rut").value;
+  const err=$("#loginErr"); err.textContent="";
+  if(nombre.split(" ").length<2){ err.textContent="Escriba su nombre y al menos un apellido."; return false; }
+  if(!rutValido(rut)){ err.textContent="El RUT no es válido. Revise los números y el dígito verificador."; return false; }
+  if(!$("#acepto").checked){ err.textContent="Debe aceptar las instrucciones para comenzar."; return false; }
+  st.nombre=nombre; st.rut=formatoRut(rut); return true;
+}
+async function intentarIngreso(codigo){
+  const err=codigo?$("#codigoErr"):$("#loginErr"), btn=codigo?$("#btnContinuar"):$("#btnComenzar"), txt=btn.textContent;
+  err.textContent=""; btn.disabled=true; btn.textContent="Conectando…";
+  let res;
+  try{ res=await servidorIniciar(codigo); }
+  catch(e){ err.textContent="No se pudo conectar. Revise su internet e intente de nuevo."; btn.disabled=false; btn.textContent=txt; return; }
+  btn.disabled=false; btn.textContent=txt;
+  if(res.estado==="entregado"){ mostrarFin("Examen ya entregado","Este RUT ya entregó el examen. Si cree que es un error, comuníquese con el profesor."); return; }
+  if(res.estado==="error"){ err.textContent=res.mensaje||"Error del servidor."; return; }
+  if(res.estado==="requiereCodigo"){
+    $("#boxCodigo").classList.remove("hidden"); if(DEMO) $("#codigoDemo").classList.remove("hidden");
+    $("#nombre").disabled=true; $("#rut").disabled=true; $("#btnComenzar").classList.add("hidden");
+    if(res.incorrecto) $("#codigoErr").textContent="Código incorrecto. Verifíquelo con el profesor.";
+    $("#codigo").focus(); return;
+  }
+  const prev=leerLocal(st.rut);
+  if(prev && !prev.entregado){ Object.assign(st, prev, {nombre:st.nombre, enviando:false}); }
+  PREGUNTAS = DEMO ? PREGUNTAS_DEMO : (res.preguntas||[]);
+  if(!PREGUNTAS.length){ err.textContent="No se pudieron cargar las preguntas. Intente de nuevo o avise al profesor."; return; }
+  st.inicio=Number(res.inicio)||Date.now();
+  iniciarExamen();
+}
+$("#btnComenzar").addEventListener("click", ()=>{ if(datosIngreso()) intentarIngreso(""); });
+$("#btnContinuar").addEventListener("click", ()=>{
+  const c=$("#codigo").value.replace(/\D/g,"");
+  if(c.length!==4){ $("#codigoErr").textContent="El código tiene 4 números."; return; }
+  intentarIngreso(c);
+});
+
+/* --- Examen --- */
+function mezclar(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function palabras(t){ return (t.trim().match(/\S+/g)||[]).length; }
+
+function iniciarExamen(){
+  if(!st.orden.length){
+    st.orden = CONFIG.mezclarPreguntas ? mezclar(PREGUNTAS.map(p=>p.id)) : PREGUNTAS.map(p=>p.id);
+    PREGUNTAS.forEach(p=>{ if(p.opciones) st.ordenOpc[p.id]= CONFIG.mezclarAlternativas ? mezclar(Object.keys(p.opciones)) : Object.keys(p.opciones); });
+  }
+  guardarLocal();
+  $("#scrLogin").classList.add("hidden"); $("#scrExam").classList.remove("hidden");
+  $("#who").textContent=st.nombre+" · "+st.rut;
+  const marca=(st.nombre+" · "+st.rut+" · ").repeat(1);
+  const cont=$("#preguntas"); cont.innerHTML="";
+  st.orden.forEach((id,i)=>{
+    const p=PREGUNTAS.find(x=>x.id===id); if(!p) return;
+    const div=document.createElement("div"); div.className="card q"; div.dataset.id=id;
+    let h='<div class="wm">'+Array(14).fill('<span></span>').join("")+'</div>';
+    h+='<span class="pts">'+p.puntaje+' pts</span><div class="num">Pregunta '+(i+1)+(p.tipo==="vf"?" · Verdadero o falso":p.tipo==="desarrollo"?" · Desarrollo":"")+'</div>';
+    h+='<div class="stem"></div>';
+    if(p.tipo==="alternativas"){
+      st.ordenOpc[id].forEach((k,j)=>{ h+='<label class="opt"><input type="radio" name="'+id+'" value="'+k+'"><span><b>'+String.fromCharCode(97+j)+')</b> <span class="ot" data-k="'+k+'"></span></span></label>'; });
+    } else if(p.tipo==="vf"){
+      h+='<label class="opt"><input type="radio" name="'+id+'" value="V"><span><b>Verdadero</b></span></label>';
+      h+='<label class="opt"><input type="radio" name="'+id+'" value="F"><span><b>Falso</b></span></label>';
+      if(p.pideJustificacion) h+='<label style="font-weight:600;margin-top:14px">Justifique su respuesta:</label><textarea data-just="1" spellcheck="false" autocomplete="off" autocorrect="off"></textarea><div class="wc"></div>';
+    } else {
+      h+='<textarea spellcheck="false" autocomplete="off" autocorrect="off" placeholder="Escriba aquí su respuesta con sus propias palabras…"></textarea><div class="wc"></div>';
+    }
+    div.innerHTML=h;
+    div.querySelector(".stem").textContent=p.texto;
+    div.querySelectorAll(".wm span").forEach(s=>s.textContent=marca);
+    div.querySelectorAll(".ot").forEach(s=>s.textContent=p.opciones[s.dataset.k]);
+    cont.appendChild(div);
+
+    // restaurar y escuchar
+    const r=st.respuestas[id]||{};
+    div.querySelectorAll('input[type=radio]').forEach(inp=>{
+      if(r.opcion===inp.value){ inp.checked=true; inp.closest(".opt").classList.add("sel"); }
+      inp.addEventListener("change",()=>{ div.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel")); inp.closest(".opt").classList.add("sel");
+        st.respuestas[id]=Object.assign(st.respuestas[id]||{}, {opcion:inp.value}); guardarLocal(); actualizarProgreso(); });
+    });
+    const ta=div.querySelector("textarea");
+    if(ta){
+      ta.value=r.texto||"";
+      const wc=div.querySelector(".wc"), min=p.minPalabras||0, max=p.maxPalabras||CONFIG.maxPalabras||0;
+      const upd=()=>{ const n=palabras(ta.value);
+        wc.textContent=n+(max?" / "+max:"")+" palabras"+(min?" (mínimo sugerido: "+min+")":"")+(max&&n>=max?" · llegó al máximo":"");
+        wc.classList.toggle("low",(min&&n<min)||(max&&n>=max)); };
+      upd(); protegerTexto(ta);
+      ta.addEventListener("input",()=>{
+        if(max && palabras(ta.value)>max){ const m=ta.value.match(new RegExp("^\\s*(?:\\S+\\s+){"+(max-1)+"}\\S+")); if(m) ta.value=m[0]; }
+        st.respuestas[id]=Object.assign(st.respuestas[id]||{}, {texto:ta.value}); guardarLocal(); upd(); actualizarProgreso(); });
+    }
+  });
+  if(CONFIG.unaPorPantalla) prepararPaginacion();
+  actualizarProgreso();
+  try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){}
+  tick=setInterval(actualizarReloj,500); actualizarReloj();
+}
+
+/* --- Una pregunta por pantalla --- */
+function prepararPaginacion(){
+  if(typeof st.actual!=="number") st.actual=0;
+  if(typeof st.maxVista!=="number") st.maxVista=st.actual;
+  $("#chipsBox").classList.remove("hidden"); $("#nav").classList.remove("hidden");
+  const ch=$("#chips"); ch.innerHTML="";
+  st.orden.forEach((id,i)=>{ const b=document.createElement("button"); b.className="chip"; b.textContent=i+1; b.dataset.i=i;
+    b.addEventListener("click",()=>irA(i)); ch.appendChild(b); });
+  $("#btnAnt").onclick=()=>irA(st.actual-1);
+  $("#btnSig").onclick=()=>irA(st.actual+1);
+  irA(st.actual,true);
+}
+function irA(i,forzar){
+  const n=st.orden.length; if(i<0||i>=n) return;
+  if(!CONFIG.permitirVolver && i<st.actual && !forzar) return;
+  if(!CONFIG.permitirVolver && i>st.actual+1 && !forzar) return;
+  st.actual=i; st.maxVista=Math.max(st.maxVista||0,i); guardarLocal();
+  document.querySelectorAll("#preguntas .q").forEach((c,j)=>c.classList.toggle("hidden",j!==i));
+  $("#btnAnt").classList.toggle("hidden", i===0 || !CONFIG.permitirVolver);
+  $("#btnSig").classList.toggle("hidden", i===n-1);
+  $("#nav").style.justifyContent = (i===0||!CONFIG.permitirVolver) ? "flex-end" : "space-between";
+  $("#zonaEntrega").classList.toggle("hidden", i!==n-1);
+  if(!CONFIG.permitirVolver && i<n-1) $("#btnSig").textContent="Siguiente → (no podrá volver)";
+  actualizarChips(); window.scrollTo({top:0,behavior:"smooth"});
+}
+function actualizarChips(){
+  if(!CONFIG.unaPorPantalla) return;
+  document.querySelectorAll("#chips .chip").forEach((b,j)=>{
+    const p=PREGUNTAS.find(x=>x.id===st.orden[j]);
+    b.classList.toggle("resp", respondida(p)); b.classList.toggle("act", j===st.actual);
+    b.disabled = !CONFIG.permitirVolver && j!==st.actual;
+  });
+}
+
+function respondida(p){ const r=st.respuestas[p.id]||{};
+  if(p.tipo==="alternativas") return !!r.opcion;
+  if(p.tipo==="vf") return !!r.opcion && (!p.pideJustificacion || palabras(r.texto||"")>0);
+  return palabras(r.texto||"")>0; }
+function actualizarProgreso(){ const n=PREGUNTAS.filter(respondida).length;
+  $("#prog").textContent=n+" de "+PREGUNTAS.length+" respondidas";
+  $("#faltan").textContent= n<PREGUNTAS.length ? "Le faltan "+(PREGUNTAS.length-n)+" pregunta(s) por responder." : "Respondió todas las preguntas.";
+  actualizarChips(); }
+
+function actualizarReloj(){
+  const fin=st.inicio+CONFIG.duracionMinutos*60000, rest=Math.max(0,fin-Date.now());
+  const m=Math.floor(rest/60000), s=Math.floor(rest%60000/1000);
+  const t=$("#timer"); t.textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  t.classList.toggle("warn",rest<=5*60000&&rest>60000); t.classList.toggle("crit",rest<=60000);
+  if(rest<=5*60000 && rest>5*60000-1000) aviso("Quedan 5 minutos.");
+  if(rest<=60000 && rest>59000) aviso("Queda 1 minuto. El examen se entregará automáticamente.");
+  if(rest<=0 && !st.entregado && !st.enviando){ entregar("tiempo"); }
+}
+let avisoT=null;
+function avisoControl(txt,ms){ if(CONFIG.mostrarAvisosControl) aviso(txt,ms); }
+function aviso(txt,ms=5000){ const a=$("#alerta"); a.textContent=txt; a.classList.remove("hidden"); clearTimeout(avisoT); avisoT=setTimeout(()=>a.classList.add("hidden"),ms); }
+
+/* --- Protecciones --- */
+function protegerTexto(ta){
+  ["paste","drop"].forEach(ev=>ta.addEventListener(ev,e=>{ e.preventDefault(); st.intentosPegar++; guardarLocal(); avisoControl("No está permitido pegar texto. Escriba con sus propias palabras."); }));
+  ta.addEventListener("beforeinput",e=>{
+    const t=e.inputType||"";
+    if(t==="insertFromPaste"||t==="insertFromDrop"||t==="insertFromYank"||t==="insertFromPasteAsQuotation"){ e.preventDefault(); st.intentosPegar++; guardarLocal(); avisoControl("No está permitido pegar texto."); return; }
+    if((t==="insertText"||t==="insertReplacementText") && e.data && e.data.length>40){ e.preventDefault(); st.insercionesSospechosas++; guardarLocal(); avisoControl("Se bloqueó un ingreso de texto no escrito a mano."); }
+  });
+  ta.addEventListener("dragover",e=>e.preventDefault());
+}
+["copy","cut"].forEach(ev=>document.addEventListener(ev,e=>{ if($("#scrExam").classList.contains("hidden")) return; e.preventDefault(); st.intentosCopiar++; guardarLocal(); avisoControl("No está permitido copiar el contenido del examen."); }));
+document.addEventListener("selectstart",e=>{ if(!$("#scrExam").classList.contains("hidden") && e.target.tagName!=="TEXTAREA") e.preventDefault(); });
+document.addEventListener("dragstart",e=>e.preventDefault());
+document.addEventListener("keydown",e=>{
+  if($("#scrExam").classList.contains("hidden")) return;
+  const k=(e.key||"").toLowerCase(), mod=e.ctrlKey||e.metaKey;
+  if(mod && ["c","x","v","a","p","s","u","f"].includes(k) && !(k==="a"&&e.target.tagName==="TEXTAREA")){
+    e.preventDefault(); if(k==="v") st.intentosPegar++; if(k==="c"||k==="x") st.intentosCopiar++; guardarLocal(); avisoControl("Acción no permitida durante el examen."); }
+  if(k==="f12"||(mod&&e.shiftKey&&["i","j","c"].includes(k))) e.preventDefault();
+  if(e.shiftKey && k==="insert"){ e.preventDefault(); st.intentosPegar++; }
+});
+document.addEventListener("keyup",e=>{ if((e.key||"")==="PrintScreen" && !$("#scrExam").classList.contains("hidden")){
+  st.capturas++; guardarLocal(); try{ navigator.clipboard.writeText(""); }catch(_){} avisoControl("Las capturas de pantalla quedan registradas."); }});
+
+function registrarSalida(){
+  if($("#scrExam").classList.contains("hidden")||st.entregado) return;
+  const ahora=Date.now(); if(ahora-ultimaSalida<1500) return; ultimaSalida=ahora;
+  st.salidas++; guardarLocal();
+  avisoControl("Salió de la página del examen ("+st.salidas+" vez/veces). Esto queda registrado.",7000);
+  if(CONFIG.limiteSalidas>0 && st.salidas>=CONFIG.limiteSalidas) entregar("salidas");
+}
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) registrarSalida(); });
+window.addEventListener("blur",registrarSalida);
+window.addEventListener("beforeunload",e=>{ if(!$("#scrExam").classList.contains("hidden")&&!st.entregado){ e.preventDefault(); e.returnValue=""; }});
+
+/* --- Entrega --- */
+$("#btnEntregar").addEventListener("click",()=>{ $("#confirmBox").classList.remove("hidden"); $("#btnEntregar").classList.add("hidden"); });
+$("#btnNo").addEventListener("click",()=>{ $("#confirmBox").classList.add("hidden"); $("#btnEntregar").classList.remove("hidden"); });
+$("#btnSi").addEventListener("click",()=>entregar("alumno"));
+$("#btnReintentar").addEventListener("click",()=>entregar(st.motivo||"alumno"));
+
+async function entregar(motivo){
+  if(st.entregado||st.enviando) return;
+  st.enviando=true; st.motivo=motivo; clearInterval(tick);
+  const payload={ accion:"entregar", nombre:st.nombre, rut:st.rut, inicio:st.inicio, entrega:Date.now(), motivo,
+    salidas:st.salidas, intentosPegar:st.intentosPegar, intentosCopiar:st.intentosCopiar,
+    insercionesSospechosas:st.insercionesSospechosas, capturas:st.capturas,
+    respuestas: PREGUNTAS.map(p=>({ id:p.id, opcion:(st.respuestas[p.id]||{}).opcion||"", texto:(st.respuestas[p.id]||{}).texto||"" })) };
+  $("#scrExam").classList.add("hidden");
+  mostrarFin("Enviando…","No cierre esta ventana.");
+  try{
+    const r=await servidorEntregar(payload);
+    if(!r.ok) throw new Error(r.mensaje||"error");
+    st.entregado=true; st.enviando=false; guardarLocal();
+    try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){}
+    const motivoTxt= motivo==="tiempo" ? " (el tiempo terminó y se entregó automáticamente)" : motivo==="salidas" ? " (se entregó automáticamente por salir de la página)" : "";
+    mostrarFin("Examen entregado","Sus respuestas fueron recibidas"+motivoTxt+". Ya puede cerrar esta ventana. ¡Gracias!");
+    if(r.demo) mostrarResumenDemo(payload);
+  }catch(e){
+    st.enviando=false; guardarLocal();
+    mostrarFin("No se pudo enviar","Sus respuestas siguen guardadas en este dispositivo. Revise su conexión a internet y presione “Reintentar envío”. No cierre esta ventana.");
+    $("#btnReintentar").classList.remove("hidden");
+  }
+}
+function mostrarFin(t,m){ $("#scrLogin").classList.add("hidden"); $("#scrExam").classList.add("hidden"); $("#scrDone").classList.remove("hidden");
+  $("#doneTitle").textContent=t; $("#doneMsg").textContent=m; $("#btnReintentar").classList.add("hidden"); }
+function mostrarResumenDemo(p){
+  const min=Math.round((p.entrega-p.inicio)/60000);
+  let rows=[["Nombre",p.nombre],["RUT",p.rut],["Minutos usados",min],["Motivo de entrega",p.motivo],
+    ["Salidas de la página",p.salidas],["Intentos de pegar",p.intentosPegar],["Intentos de copiar",p.intentosCopiar],
+    ["Ingresos de texto sospechosos",p.insercionesSospechosas],["Capturas (tecla Impr Pant)",p.capturas]];
+  p.respuestas.forEach(r=>rows.push([r.id.toUpperCase(), (r.opcion?("Opción: "+r.opcion+" "):"")+(r.texto?("· "+r.texto):"") || "(sin respuesta)"]));
+  const t=document.createElement("table"); t.className="sum";
+  rows.forEach(([a,b])=>{ const tr=t.insertRow(); tr.insertCell().textContent=a; tr.insertCell().textContent=b; });
+  const h=document.createElement("p"); h.innerHTML="<b>Vista de demostración:</b> esto es lo que llegaría como una fila a su planilla de Google.";
+  $("#doneDemo").append(h,t);
+  try{ localStorage.removeItem("exam_"+p.rut); }catch(e){}
+}
+</script>
+</body>
+</html>
